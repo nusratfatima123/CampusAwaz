@@ -7,7 +7,6 @@ import { Alert } from '@/components/ui/Alert';
 import { ButtonLink } from '@/components/ui/Button';
 import { IntakeWorkspace } from '@/components/admin/IntakeWorkspace';
 import { getAuthContext } from '@/lib/auth';
-import { isVerified } from '@/lib/verification';
 import { roleLabel, primaryRole } from '@/lib/roles';
 import { canUseIntake, getIntakeQueue } from '@/lib/routing';
 
@@ -31,7 +30,6 @@ export default async function AdminIntakePage() {
   const { user, profile, roles } = await getAuthContext();
 
   if (!user) redirect('/login');
-  if (!isVerified(profile)) redirect('/pending');
 
   // Students and unauthorized staff never see this surface.
   if (!canUseIntake(roles)) redirect('/dashboard');

@@ -85,12 +85,6 @@ export function LoginForm() {
       const nextParam = searchParams.get('next');
       const verified = profile?.affiliation_status === 'verified';
 
-      if (!verified) {
-        router.replace('/verify');
-        router.refresh();
-        return;
-      }
-
       // Staff users go to admin dashboard; students go to regular dashboard.
       const STAFF_ROLES = [
         'admin',
@@ -108,6 +102,12 @@ export function LoginForm() {
         .map((row) => row.roles?.name)
         .filter((n): n is string => Boolean(n));
       const isStaffUser = userRoles.some((role) => STAFF_ROLES.includes(role));
+
+      if (!verified && !isStaffUser) {
+        router.replace('/verify');
+        router.refresh();
+        return;
+      }
 
       const destination = nextParam || (isStaffUser ? '/admin/dashboard' : '/dashboard');
       router.replace(destination);

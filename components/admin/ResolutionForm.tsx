@@ -41,6 +41,20 @@ export function ResolutionForm({ trackingId, onSuccess }: ResolutionFormProps) {
     setError(null);
 
     try {
+      if (files.length > 0) {
+        const formData = new FormData();
+        files.forEach((file, idx) => {
+          formData.append(idx === 0 ? 'file' : `file${idx + 1}`, file);
+        });
+
+        const uploadRes = await fetch(
+          `/api/complaints/admin/${trackingId}/resolution/evidence/upload`,
+          { method: 'POST', body: formData },
+        );
+        const uploadJson = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadJson.error ?? 'Failed to upload evidence files.');
+      }
+
       const res = await fetch(`/api/complaints/admin/${trackingId}/resolve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

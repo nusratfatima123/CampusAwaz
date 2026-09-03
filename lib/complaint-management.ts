@@ -298,7 +298,7 @@ export async function getComplaintDetail(
   // Access check: student owns it, or staff with sensitive access, or staff for non-sensitive same-uni.
   const isStudent = typed.student_id === userId;
   const isStaff = roles.some((r) =>
-    ['admin', 'hod', 'proctor', 'female_focal_person', 'counselor'].includes(r),
+    ['admin', 'hod', 'proctor', 'female_focal_person', 'hostel_warden', 'counselor'].includes(r),
   );
 
   let canAccess = isStudent;

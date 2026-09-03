@@ -6,7 +6,6 @@ import { Alert } from '@/components/ui/Alert';
 import { ButtonLink } from '@/components/ui/Button';
 import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { getAuthContext } from '@/lib/auth';
-import { isVerified } from '@/lib/verification';
 import { canUseIntake } from '@/lib/routing';
 import { getAnalyticsSummary } from '@/lib/analytics';
 
@@ -21,7 +20,6 @@ export default async function AnalyticsPage() {
   const { user, profile, roles } = await getAuthContext();
 
   if (!user) redirect('/login');
-  if (!isVerified(profile)) redirect('/pending');
   if (!canUseIntake(roles)) redirect('/dashboard');
 
   if (!profile?.university_id) {

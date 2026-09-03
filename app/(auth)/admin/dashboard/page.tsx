@@ -6,7 +6,6 @@ import { Alert } from '@/components/ui/Alert';
 import { ButtonLink } from '@/components/ui/Button';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
 import { getAuthContext } from '@/lib/auth';
-import { isVerified } from '@/lib/verification';
 import { canUseIntake, getDepartments } from '@/lib/routing';
 import { getComplaintList, getDashboardSummary } from '@/lib/complaint-management';
 import type { DashboardSummary, ComplaintListItem } from '@/components/admin/AdminDashboard';
@@ -26,7 +25,6 @@ export default async function AdminDashboardPage() {
   const { user, profile, roles } = await getAuthContext();
 
   if (!user) redirect('/login');
-  if (!isVerified(profile)) redirect('/pending');
   if (!canUseIntake(roles)) redirect('/dashboard');
 
   if (!profile?.university_id) {

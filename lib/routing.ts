@@ -581,7 +581,7 @@ export async function getAssignableStaff(
 
   const staffRows = rows.filter((row) => {
     const name = row.roles?.name;
-    return Boolean(name) && (STAFF_ROLES.includes(name!) || name === ROLES.HOSTEL_WARDEN);
+    return Boolean(name) && STAFF_ROLES.includes(name!);
   });
 
   if (staffRows.length === 0) return [];

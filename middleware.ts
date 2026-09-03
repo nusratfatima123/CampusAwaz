@@ -101,13 +101,15 @@ export async function middleware(request: NextRequest) {
   // Already signed in on /login or /register → send onward.
   if (isGuestOnlyRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = isVerified ? defaultDashboard : '/verify';
+    url.pathname = (isVerified || isStaffUser) ? defaultDashboard : '/verify';
     url.search = '';
     return NextResponse.redirect(url);
   }
 
   // Unverified user reaching for a verified-only area → /pending.
-  if (!isVerified && !matchesPrefix(pathname, UNVERIFIED_ALLOWED_PREFIXES)) {
+  // Staff users are exempt — they are provisioned directly and access admin
+  // pages rather than student-facing verified areas.
+  if (!isVerified && !isStaffUser && !matchesPrefix(pathname, UNVERIFIED_ALLOWED_PREFIXES)) {
     const url = request.nextUrl.clone();
     url.pathname = '/pending';
     url.search = '';

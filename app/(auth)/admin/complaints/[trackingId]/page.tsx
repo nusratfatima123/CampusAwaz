@@ -6,7 +6,6 @@ import { Alert } from '@/components/ui/Alert';
 import { ButtonLink } from '@/components/ui/Button';
 import { ComplaintDetail } from '@/components/admin/ComplaintDetail';
 import { getAuthContext } from '@/lib/auth';
-import { isVerified } from '@/lib/verification';
 import { canUseIntake } from '@/lib/routing';
 import { getComplaintDetail } from '@/lib/complaint-management';
 
@@ -29,7 +28,6 @@ export default async function AdminComplaintDetailPage({
   const { user, profile, roles } = await getAuthContext();
 
   if (!user) redirect('/login');
-  if (!isVerified(profile)) redirect('/pending');
   if (!canUseIntake(roles)) redirect('/dashboard');
 
   const detail = await getComplaintDetail(trackingId, user.id, roles);
