@@ -64,6 +64,7 @@ export default async function AdminComplaintDetailPage({
           identityVisible: detail.identityVisible,
           studentName: detail.studentName,
           studentAlias: detail.studentAlias,
+          canTakeAction: detail.canTakeAction,
         }}
       />
     </div>

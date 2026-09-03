@@ -87,7 +87,10 @@ export function NavShell({ user }: { user: NavUser }) {
     ? [
         ...(user.verified
           ? [
-              { label: 'Admin Dashboard', href: '/admin/dashboard' },
+              {
+                label: userRoles.includes('admin') ? 'Admin Dashboard' : 'Dashboard',
+                href: '/admin/dashboard',
+              },
               { label: 'Analytics', href: '/admin/analytics' },
             ]
           : []),

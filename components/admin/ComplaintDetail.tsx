@@ -98,6 +98,7 @@ export interface ComplaintDetailData {
   identityVisible: boolean;
   studentName: string | null;
   studentAlias: string | null;
+  canTakeAction: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -406,13 +407,13 @@ export function ComplaintDetail({
         </div>
       </Card>
 
-      {/* Resolution Form — visible when complaint can be resolved */}
-      {(complaint.status === 'assigned' || complaint.status === 'in_review') && (
+      {/* Resolution Form — visible when complaint can be resolved and user can act */}
+      {detail.canTakeAction && (complaint.status === 'assigned' || complaint.status === 'in_review') && (
         <ResolutionForm trackingId={complaint.tracking_id} onSuccess={refresh} />
       )}
 
-      {/* Reopen Control — visible when complaint is resolved */}
-      {complaint.status === 'resolved' && (
+      {/* Reopen Control — visible when complaint is resolved and user can act */}
+      {detail.canTakeAction && complaint.status === 'resolved' && (
         <Card>
           <h2 className="text-lg font-bold text-slate-900">Reopen</h2>
           <div className="mt-4">
@@ -421,20 +422,22 @@ export function ComplaintDetail({
         </Card>
       )}
 
-      {/* Action Panel */}
-      <Card>
-        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-          <UserCheck className="h-5 w-5 text-blue-900" aria-hidden="true" />
-          Actions
-        </h2>
-        <div className="mt-4">
-          <ActionPanel
-            trackingId={complaint.tracking_id}
-            currentStatus={complaint.status}
-            onAction={refresh}
-          />
-        </div>
-      </Card>
+      {/* Action Panel — visible only when user can take action */}
+      {detail.canTakeAction && (
+        <Card>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <UserCheck className="h-5 w-5 text-blue-900" aria-hidden="true" />
+            Actions
+          </h2>
+          <div className="mt-4">
+            <ActionPanel
+              trackingId={complaint.tracking_id}
+              currentStatus={complaint.status}
+              onAction={refresh}
+            />
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

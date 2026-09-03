@@ -53,6 +53,23 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
+    const is_admin = roles.includes('admin');
+    if (!is_admin) {
+      const { data: complaint } = await admin
+        .from('complaints')
+        .select('assigned_to')
+        .eq('tracking_id', trackingId)
+        .eq('university_id', profile.university_id)
+        .maybeSingle();
+
+      if (!complaint || complaint.assigned_to !== user.id) {
+        return NextResponse.json(
+          { error: 'You are not assigned to this complaint.' },
+          { status: 403 },
+        );
+      }
+    }
+
     let formData: FormData;
     try {
       formData = await request.formData();

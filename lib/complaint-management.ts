@@ -154,11 +154,19 @@ export async function getComplaintList(
 
   const visible = rows.filter((r) => !r.is_sensitive || allowedSensitive.has(r.id));
 
+  // Non-admin staff see only their assigned complaints + unassigned (submitted) complaints.
+  const isAdminUser = filters.roles.includes('admin');
+  const scoped = isAdminUser
+    ? visible
+    : visible.filter(
+        (r) => r.assigned_to === filters.userId || r.status === 'submitted',
+      );
+
   // Apply search filter on title/tracking_id.
-  let filtered = visible;
+  let filtered = scoped;
   if (filters.search) {
     const q = filters.search.toLowerCase();
-    filtered = visible.filter(
+    filtered = scoped.filter(
       (r) =>
         r.title.toLowerCase().includes(q) ||
         r.tracking_id.toLowerCase().includes(q),
@@ -250,7 +258,7 @@ export async function getComplaintList(
     };
   });
 
-  return { items, total: count ?? items.length };
+  return { items, total: filtered.length };
 }
 
 // ---------------------------------------------------------------------------
@@ -271,6 +279,7 @@ export interface ComplaintDetailResult {
   identityVisible: boolean;
   studentName: string | null;
   studentAlias: string | null;
+  canTakeAction: boolean;
 }
 
 /**
@@ -412,6 +421,9 @@ export async function getComplaintDetail(
       (typed.privacy_mode === 'anonymous' ? 'Anonymous reporter' : 'Confidential reporter');
   }
 
+  const canTakeAction =
+    roles.includes('admin') || typed.assigned_to === userId;
+
   return {
     complaint: typed,
     evidence: (evidenceResult.data ?? []) as ComplaintEvidence[],
@@ -426,6 +438,7 @@ export async function getComplaintDetail(
     identityVisible,
     studentName,
     studentAlias,
+    canTakeAction,
   };
 }
 
@@ -694,7 +707,7 @@ export async function getDashboardSummary(
 
   const { data: complaints } = await admin
     .from('complaints')
-    .select('id, status, is_sensitive, updated_at')
+    .select('id, status, is_sensitive, updated_at, assigned_to')
     .eq('university_id', universityId)
     .neq('status', 'resolved');
 
@@ -718,11 +731,19 @@ export async function getDashboardSummary(
     (c) => !c.is_sensitive || allowedSensitive.has(c.id),
   );
 
-  const open = visible.filter((c) => c.status === 'submitted').length;
-  const assigned = visible.filter((c) => c.status === 'assigned').length;
-  const inReview = visible.filter((c) => c.status === 'in_review').length;
-  const escalated = visible.filter((c) => c.status === 'escalated').length;
-  const overdue = visible.filter(
+  // Non-admin staff see only their assigned complaints in summary counts.
+  const isAdminUser = roles.includes('admin');
+  const scoped = isAdminUser
+    ? visible
+    : visible.filter(
+        (c) => c.assigned_to === userId || c.status === 'submitted',
+      );
+
+  const open = scoped.filter((c) => c.status === 'submitted').length;
+  const assigned = scoped.filter((c) => c.status === 'assigned').length;
+  const inReview = scoped.filter((c) => c.status === 'in_review').length;
+  const escalated = scoped.filter((c) => c.status === 'escalated').length;
+  const overdue = scoped.filter(
     (c) => new Date(c.updated_at) < sevenDaysAgo,
   ).length;
 
