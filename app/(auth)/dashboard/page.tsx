@@ -20,6 +20,7 @@ import {
 } from '@/components/complaints/ComplaintCard';
 import { getAuthContext, displayName } from '@/lib/auth';
 import { isVerified } from '@/lib/verification';
+import { isStaff } from '@/lib/roles';
 import { getStudentComplaints } from '@/lib/complaints';
 
 export const metadata: Metadata = {
@@ -28,11 +29,14 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const { user, profile, verifications } = await getAuthContext();
+  const { user, profile, roles, verifications } = await getAuthContext();
 
   if (!user) redirect('/login');
   // Middleware handles this too; kept so the page is safe in isolation.
   if (!isVerified(profile)) redirect('/pending');
+
+  // Staff users have their own dashboard; redirect them there.
+  if (isStaff(roles)) redirect('/admin/dashboard');
 
   const name = displayName(profile, user);
   const flagged = verifications.some(

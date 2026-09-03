@@ -83,22 +83,24 @@ export function NavShell({ user }: { user: NavUser }) {
   const userRoles = user.roles ?? [user.role];
   const staffUser = isStaff(userRoles);
 
-  // "Verify" disappears from the nav once the user is fully verified; the
-  // complaint surfaces only appear once verification is complete.
-  const links = [
-    { label: 'Dashboard', href: '/dashboard' },
-    ...(user.verified ? [{ label: 'New Complaint', href: '/complaints/new' }] : []),
-    ...(user.verified ? [{ label: 'Track', href: '/tracking' }] : []),
-    ...(user.verified ? [{ label: 'Support', href: '/support' }] : []),
-    ...(user.verified ? [] : [{ label: 'Verify', href: '/verify' }]),
-    ...(staffUser && user.verified
-      ? [{ label: 'Admin', href: '/admin/dashboard' }]
-      : []),
-    ...(staffUser && user.verified
-      ? [{ label: 'Analytics', href: '/admin/analytics' }]
-      : []),
-    { label: 'Profile', href: '/profile' },
-  ];
+  const links = staffUser
+    ? [
+        ...(user.verified
+          ? [
+              { label: 'Admin Dashboard', href: '/admin/dashboard' },
+              { label: 'Analytics', href: '/admin/analytics' },
+            ]
+          : []),
+        { label: 'Profile', href: '/profile' },
+      ]
+    : [
+        { label: 'Dashboard', href: '/dashboard' },
+        ...(user.verified ? [{ label: 'New Complaint', href: '/complaints/new' }] : []),
+        ...(user.verified ? [{ label: 'Track', href: '/tracking' }] : []),
+        ...(user.verified ? [{ label: 'Support', href: '/support' }] : []),
+        ...(user.verified ? [] : [{ label: 'Verify', href: '/verify' }]),
+        { label: 'Profile', href: '/profile' },
+      ];
 
   async function handleSignOut() {
     setSigningOut(true);

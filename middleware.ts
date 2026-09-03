@@ -79,10 +79,29 @@ export async function middleware(request: NextRequest) {
 
   const isVerified = profile?.affiliation_status === 'verified';
 
+  // Determine if user is staff for role-aware redirects.
+  const STAFF_ROLES = [
+    'admin',
+    'hod',
+    'proctor',
+    'female_focal_person',
+    'hostel_warden',
+    'counselor',
+  ];
+  const { data: roleRows } = await supabase
+    .from('user_roles')
+    .select('roles ( name )')
+    .eq('user_id', user.id);
+  const userRoles = ((roleRows ?? []) as unknown as { roles: { name: string } | null }[])
+    .map((row) => row.roles?.name)
+    .filter((n): n is string => Boolean(n));
+  const isStaffUser = userRoles.some((role) => STAFF_ROLES.includes(role));
+  const defaultDashboard = isStaffUser ? '/admin/dashboard' : '/dashboard';
+
   // Already signed in on /login or /register → send onward.
   if (isGuestOnlyRoute) {
     const url = request.nextUrl.clone();
-    url.pathname = isVerified ? '/dashboard' : '/verify';
+    url.pathname = isVerified ? defaultDashboard : '/verify';
     url.search = '';
     return NextResponse.redirect(url);
   }
@@ -98,7 +117,7 @@ export async function middleware(request: NextRequest) {
   // Verified user has no reason to sit on /pending.
   if (isVerified && pathname === '/pending') {
     const url = request.nextUrl.clone();
-    url.pathname = '/dashboard';
+    url.pathname = defaultDashboard;
     url.search = '';
     return NextResponse.redirect(url);
   }

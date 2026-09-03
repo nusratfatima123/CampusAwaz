@@ -75,7 +75,7 @@ export function LoginForm() {
         return;
       }
 
-      // Route based on verification state.
+      // Route based on verification state and role.
       const { data: profile } = await supabase
         .from('profiles')
         .select('affiliation_status')
@@ -84,8 +84,32 @@ export function LoginForm() {
 
       const nextParam = searchParams.get('next');
       const verified = profile?.affiliation_status === 'verified';
-      const destination = verified ? nextParam || '/dashboard' : '/verify';
 
+      if (!verified) {
+        router.replace('/verify');
+        router.refresh();
+        return;
+      }
+
+      // Staff users go to admin dashboard; students go to regular dashboard.
+      const STAFF_ROLES = [
+        'admin',
+        'hod',
+        'proctor',
+        'female_focal_person',
+        'hostel_warden',
+        'counselor',
+      ];
+      const { data: roleRows } = await supabase
+        .from('user_roles')
+        .select('roles ( name )')
+        .eq('user_id', data.user.id);
+      const userRoles = ((roleRows ?? []) as unknown as { roles: { name: string } | null }[])
+        .map((row) => row.roles?.name)
+        .filter((n): n is string => Boolean(n));
+      const isStaffUser = userRoles.some((role) => STAFF_ROLES.includes(role));
+
+      const destination = nextParam || (isStaffUser ? '/admin/dashboard' : '/dashboard');
       router.replace(destination);
       router.refresh();
     } catch (err) {
