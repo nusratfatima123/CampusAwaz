@@ -484,6 +484,36 @@ export type AnalyticsSummary = {
   totalEscalations: number;
 };
 
+// ---------------------------------------------------------------------------
+// Sprint 7 — verified university authority system
+// ---------------------------------------------------------------------------
+
+export type AuthorityRequestStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'suspended'
+  | 'reinstated';
+
+export type AuthorityRequest = {
+  id: string;
+  user_id: string;
+  university_id: string;
+  role_id: string;
+  department_id: string | null;
+  status: AuthorityRequestStatus;
+  statement: string;
+  evidence_path: string | null;
+  reviewed_by: string | null;
+  review_reason: string | null;
+  reviewed_at: string | null;
+  suspended_by: string | null;
+  suspension_reason: string | null;
+  suspended_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /**
  * Minimal Database interface for the Supabase client generics. Only the tables
  * touched in Sprints 1–6 are described.
@@ -754,6 +784,17 @@ export interface Database {
           phone: string;
         };
         Update: Partial<EmergencyContact>;
+        Relationships: [];
+      };
+      authority_requests: {
+        Row: AuthorityRequest;
+        Insert: Partial<AuthorityRequest> & {
+          user_id: string;
+          university_id: string;
+          role_id: string;
+          statement: string;
+        };
+        Update: Partial<AuthorityRequest>;
         Relationships: [];
       };
     };

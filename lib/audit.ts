@@ -44,6 +44,12 @@ export const AUDIT_EVENTS = {
   COUNSELING_REQUEST_ASSIGNED: 'counseling.request.assigned',
   COUNSELING_STATUS_CHANGED: 'counseling.status.changed',
   FAQ_ASSIST_REQUESTED: 'faq.assist.requested',
+  // --- Sprint 7 — verified university authority system ---
+  AUTHORITY_REQUEST_CREATED: 'authority.request.created',
+  AUTHORITY_REQUEST_APPROVED: 'authority.request.approved',
+  AUTHORITY_REQUEST_REJECTED: 'authority.request.rejected',
+  AUTHORITY_SUSPENDED: 'authority.suspended',
+  AUTHORITY_REINSTATED: 'authority.reinstated',
 } as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[keyof typeof AUDIT_EVENTS] | string;

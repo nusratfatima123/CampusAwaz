@@ -22,6 +22,15 @@ export const STAFF_ROLES: RoleName[] = [
   ROLES.COUNSELOR,
 ];
 
+/** Roles that verified students/graduates can request through the authority workflow. */
+export const AUTHORITY_REQUESTABLE_ROLES: RoleName[] = [
+  ROLES.HOD,
+  ROLES.PROCTOR,
+  ROLES.FEMALE_FOCAL_PERSON,
+  ROLES.HOSTEL_WARDEN,
+  ROLES.COUNSELOR,
+];
+
 const ROLE_LABELS: Record<RoleName, string> = {
   student: 'Student',
   graduate: 'Graduate',
