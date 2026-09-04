@@ -60,6 +60,8 @@ export interface ComplaintListItem {
   studentName: string | null;
   studentAlias: string | null;
   slaState: string | null;
+  slaHoursRemaining: number | null;
+  slaDeadline: string | null;
 }
 
 interface AdminDashboardProps {
@@ -333,7 +335,21 @@ function ComplaintTable({ items }: { items: ComplaintListItem[] }) {
                     {formatComplaintDate(item.submittedAt)}
                   </td>
                   <td className="hidden px-4 py-3 lg:table-cell">
-                    <SlaDot state={item.slaState} />
+                    <div className="flex items-center gap-2">
+                      <SlaDot state={item.slaState} />
+                      {item.slaState === 'breached' ? (
+                        <span className="text-xs font-medium text-red-600">Breached</span>
+                      ) : item.slaState && item.slaHoursRemaining != null ? (
+                        <span className={cn(
+                          'text-xs font-medium',
+                          item.slaState === 'approaching' ? 'text-amber-600' : 'text-slate-600',
+                        )}>
+                          {Math.round(item.slaHoursRemaining)}h left
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">

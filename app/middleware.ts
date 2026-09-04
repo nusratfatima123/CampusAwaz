@@ -22,8 +22,6 @@ const AUTH_PREFIXES = [
   // Sprint 4 — student tracking and notifications.
   '/tracking',
   '/notifications',
-  // Phase 2 — verified university authority system.
-  '/authority',
 ];
 const GUEST_ONLY_PATHS = ['/login', '/register'];
 

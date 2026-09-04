@@ -161,70 +161,56 @@ function StatusTimeline({ history }: { history: StatusHistoryEntry[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Action Panel
+// Escalate Form
 // ---------------------------------------------------------------------------
 
-function ActionPanel({
+function EscalateForm({
   trackingId,
-  currentStatus,
   onAction,
 }: {
   trackingId: string;
-  currentStatus: ComplaintStatus;
   onAction: () => void;
 }) {
-  const router = useRouter();
-  const [newStatus, setNewStatus] = useState('');
-  const [notes, setNotes] = useState('');
+  const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Valid transitions for Sprint 5.
-  const validTransitions: Record<ComplaintStatus, ComplaintStatus[]> = {
-    submitted: ['assigned', 'in_review'],
-    assigned: ['in_review', 'escalated'],
-    in_review: ['action_taken', 'escalated'],
-    action_taken: ['resolved'],
-    resolved: ['reopened'],
-    escalated: ['in_review', 'assigned'],
-    reopened: ['in_review'],
-  };
-
-  const transitions = validTransitions[currentStatus] ?? [];
+  const [expanded, setExpanded] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!newStatus) return;
+    if (reason.trim().length < 10) {
+      setError('Reason must be at least 10 characters.');
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/complaints/admin/${trackingId}/status`, {
+      const res = await fetch(`/api/complaints/admin/${trackingId}/escalate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, notes: notes.trim() || undefined }),
+        body: JSON.stringify({ reason: reason.trim() }),
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Failed to change status');
+      if (!res.ok) throw new Error(json.error ?? 'Failed to escalate complaint');
 
-      setNewStatus('');
-      setNotes('');
+      setReason('');
+      setExpanded(false);
       onAction();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not change status.');
+      setError(err instanceof Error ? err.message : 'Could not escalate complaint.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (transitions.length === 0) {
+  if (!expanded) {
     return (
-      <Alert tone="info" title="Terminal status">
-        This complaint is {currentStatus === 'resolved' ? 'resolved' : 'in a terminal state'}.
-        No further status changes are available.
-      </Alert>
+      <Button variant="secondary" onClick={() => setExpanded(true)}>
+        Escalate
+      </Button>
     );
   }
 
@@ -232,50 +218,39 @@ function ActionPanel({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
         <label
-          htmlFor="status-select"
+          htmlFor="escalate-reason"
           className="mb-1.5 block text-sm font-medium text-slate-700"
         >
-          Change status to
-        </label>
-        <select
-          id="status-select"
-          value={newStatus}
-          onChange={(e) => setNewStatus(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select a status...</option>
-          {transitions.map((s) => (
-            <option key={s} value={s}>
-              {statusLabel(s)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label
-          htmlFor="status-notes"
-          className="mb-1.5 block text-sm font-medium text-slate-700"
-        >
-          Notes (optional)
+          Reason for escalation
         </label>
         <textarea
-          id="status-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
+          id="escalate-reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
           rows={3}
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Add context about this change..."
+          placeholder="Explain why this complaint needs escalation (min 10 characters)..."
         />
       </div>
 
-      {error && (
-        <Alert tone="error">{error}</Alert>
-      )}
+      {error && <Alert tone="error">{error}</Alert>}
 
-      <Button type="submit" disabled={!newStatus || submitting} loading={submitting}>
-        {submitting ? 'Updating...' : 'Update Status'}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={reason.trim().length < 10 || submitting} loading={submitting}>
+          {submitting ? 'Escalating...' : 'Confirm Escalation'}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() => {
+            setExpanded(false);
+            setReason('');
+            setError(null);
+          }}
+        >
+          Cancel
+        </Button>
+      </div>
     </form>
   );
 }
@@ -768,7 +743,7 @@ export function ComplaintDetail({
         </Card>
       )}
 
-      {/* Action Panel — visible only when user can take action */}
+      {/* Escalate — visible only when user can take action */}
       {detail.canTakeAction && (
         <Card>
           <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
@@ -776,9 +751,8 @@ export function ComplaintDetail({
             Actions
           </h2>
           <div className="mt-4">
-            <ActionPanel
+            <EscalateForm
               trackingId={complaint.tracking_id}
-              currentStatus={complaint.status}
               onAction={refresh}
             />
           </div>

@@ -84,6 +84,8 @@ export interface ComplaintListItem {
   studentName: string | null;
   studentAlias: string | null;
   slaState: SlaState | null;
+  slaHoursRemaining: number | null;
+  slaDeadline: string | null;
 }
 
 export interface ComplaintListFilters {
@@ -245,11 +247,11 @@ export async function getComplaintList(
   );
 
   const slaRules = (slaRulesResult.data ?? []) as unknown as SlaRule[];
-  function computeSlaState(
+  function computeSla(
     categoryKey: string | null,
     priority: ComplaintPriority,
     submittedAt: string,
-  ): SlaState | null {
+  ): { state: SlaState; hoursRemaining: number; deadline: string } | null {
     const rule =
       slaRules.find((r) => r.category_key === categoryKey && r.priority === priority) ??
       slaRules.find((r) => r.category_key === null && r.priority === priority) ??
@@ -258,9 +260,14 @@ export async function getComplaintList(
     const deadlineMs =
       new Date(submittedAt).getTime() + rule.response_hours * 60 * 60 * 1000;
     const hoursRemaining = (deadlineMs - Date.now()) / (1000 * 60 * 60);
-    if (hoursRemaining <= 0) return 'breached';
-    if (hoursRemaining <= rule.response_hours * SLA_APPROACHING_THRESHOLD) return 'approaching';
-    return 'on_track';
+    let state: SlaState = 'on_track';
+    if (hoursRemaining <= 0) state = 'breached';
+    else if (hoursRemaining <= rule.response_hours * SLA_APPROACHING_THRESHOLD) state = 'approaching';
+    return {
+      state,
+      hoursRemaining: Math.round(hoursRemaining * 10) / 10,
+      deadline: new Date(deadlineMs).toISOString(),
+    };
   }
 
   const items: ComplaintListItem[] = filtered.map((r) => {
@@ -269,6 +276,12 @@ export async function getComplaintList(
       r.privacy_mode === 'identified' ||
       (r.privacy_mode === 'confidential' &&
         (privacy?.exposed_to ?? []).includes(filters.userId));
+
+    const sla = computeSla(
+      r.complaint_categories?.key ?? null,
+      r.priority,
+      r.submitted_at,
+    );
 
     return {
       id: r.id,
@@ -292,11 +305,9 @@ export async function getComplaintList(
         ? null
         : (privacy?.anonymous_alias ??
           (r.privacy_mode === 'anonymous' ? 'Anonymous reporter' : 'Confidential reporter')),
-      slaState: computeSlaState(
-        r.complaint_categories?.key ?? null,
-        r.priority,
-        r.submitted_at,
-      ),
+      slaState: sla?.state ?? null,
+      slaHoursRemaining: sla?.hoursRemaining ?? null,
+      slaDeadline: sla?.deadline ?? null,
     };
   });
 
