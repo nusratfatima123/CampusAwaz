@@ -1,0 +1,1006 @@
+Software Requirements Specification (SRS)
+1. DOCUMENT INFORMATION
+
+Field        Details
+
+Project Name CampusAwaz
+
+Document Title Software Requirements Specification
+
+Version      1.0
+
+Date         28 August 2026
+
+Prepared By  CampusAwaz Team
+
+Document Status Draft / Hackathon MVP
+
+2. INTRODUCTION
+
+2.1 Purpose
+
+CampusAwaz is an AI-powered, privacy-first student complaint and support platform
+designed to connect verified university students and eligible alumni with university
+administrations. This SRS defines the functional, non-functional, UI/UX, integration,
+architecture, security, notification, analytics, and acceptance requirements for the
+CampusAwaz MVP.
+
+2.2 Scope
+
+The system will allow students from participating universities to verify their university
+affiliation, submit university-related complaints, choose their preferred level of identity
+protection, upload evidence, receive AI assistance, track complaints, and receive
+resolution information.
+
+University authorities will be able to manage, assign, review, escalate, and resolve
+complaints through role-based dashboards. Sensitive harassment and safety complaints
+will use a protected workflow with restricted access.
+
+The MVP will focus on a responsive web application and a complete complaint-to-
+resolution workflow.
+4. PRODUCT SCOPE
+4.1 In Scope
+
+    · University and student registration
+    · Current student and graduate status
+    · University affiliation verification
+    · University email/OTP verification
+    · Student-card verification with AI/OCR assistance
+    · Verified but Protected reporting
+    · Identified, Confidential, and Anonymous complaint options
+    · Universal complaint system
+    · Academic and marking complaints
+    · Attendance and examination complaints
+    · Harassment, bullying, ragging and stalking complaints
+    · Wi-Fi and infrastructure complaints
+    · Hostel and transport complaints
+    · Fee and scholarship complaints
+    · Administrative, degree and transcript complaints
+    · Evidence upload
+    · AI Complaint Assistant
+    · AI complaint classification
+    · AI priority recommendation
+    · AI department recommendation
+    · AI structured complaint generation
+    · Smart complaint routing
+    · Dedicated harassment and safety workflow
+    · Female Focal Person access
+    · Immediate-danger indication
+    · Complaint tracking ID
+    · Complaint status timeline
+    · Complaint escalation
+    · Proof of Action
+    · Resolution evidence
+    · Student feedback
+    · Student support resources
+    · Mental-health resources
+    · Anonymous counseling requests
+    · Student-rights and policy information
+    · FAQs
+    · Emergency contacts
+    · University administration dashboard
+    · Role-based access
+    · Complaint analytics
+    · Notifications for complaint status changes
+    · Audit logging
+    · Responsive web interface
+4.2 Out of Scope
+    · Official live university database integration during the MVP
+    · Official HEC integration during the MVP
+    · SMS services during the MVP
+    · Real-time campus security tracking
+    · Large-scale production deployment across universities
+4.3 Future Enhancements
+    · Official university student-information-system integrations
+    · HEC integration where official APIs are available
+    · Automatic escalation to external bodies
+    · SMS services
+    · Large-scale multi-university deployment
+    · Dedicated mobile application
+    · Additional student-community features
+    · Advanced analytics
+
+7. FUNCTIONAL REQUIREMENTS
+7.1 University & Student Authentication Module
+Purpose
+To register users and verify their affiliation with a participating university.
+Actors
+
+    · Student
+    · Graduate/Alumni
+    · System
+Preconditions
+    · User must access the registration process.
+    · The selected university must be available in the system.
+Main Flow
+    1. User creates an account.
+    2. User selects a university.
+    3. User selects Current Student or Graduate.
+    4. User completes an available verification method.
+    5. System records the verification status.
+    6. Verified user can access complaint functionality.
+Alternative Flows
+
+    · User may verify through university email/OTP.
+    · User may use student-card verification where available.
+Error/Exception Scenarios
+    · Verification information does not match.
+    · Invalid or incomplete verification information is provided.
+    · Verification cannot be completed.
+Functional Requirements
+
+Requirement  Requirement                            Priority Acceptance Criteria
+ID
+
+                   The system shall allow users to  High  University can be selected
+FR-AUTH-001 select their participating                    during registration.
+
+                   university.
+
+                   The system shall allow users to        User can select one applicable
+FR-AUTH-002 identify themselves as a current High         status.
+
+                   student or graduate.
+
+FR-AUTH-003  The system shall support               High  User can complete verification
+             university email/OTP verification.           using the supported university
+                                                          email method.
+
+FR-AUTH-004  The system shall support student-      High  Student can submit a student
+             card verification where enabled.             card for verification.
+
+FR-AUTH-005  The system shall record the user's     High  Verification status is available
+             university verification status.              after the verification process.
+
+7.2 Student Complaint Module
+Purpose
+To provide one centralized system for reporting university-related problems.
+Actors
+    · Verified Student
+    · Graduate/Alumni
+
+Preconditions
+    · User must be verified.
+
+Main Flow
+    1. Student opens the complaint system.
+    2. Student describes the problem.
+    3. Student selects or confirms the complaint category.
+    4. Student selects identity protection level.
+    5. Student attaches evidence if available.
+    6. Student reviews the complaint.
+    7. Student submits it.
+    8. System generates a unique tracking ID.
+
+Alternative Flows
+    · Student may submit without evidence.
+    · Student may submit as Identified, Confidential, or Anonymous.
+
+Error/Exception Scenarios
+    · Required complaint information is missing.
+    · Evidence upload fails.
+    · Complaint cannot be submitted.
+
+Functional Requirements
+Requirement  Requirement                                     Priority Acceptance Criteria
+ID
+
+FR-CMP-001   The system shall allow verified users to        High  A verified user can
+             submit university-related complaints.                 successfully submit a
+                                                                   complaint.
+
+             The system shall support academic,                    Supported categories
+                                                                   are available when
+FR-CMP-002   facilities, hostel, financial, administrative,  High  creating a complaint.
+             safety, harassment, and other university-
+
+             related complaint categories.
+
+FR-CMP-003   The system shall allow students to attach       High  Supported evidence
+             supporting evidence.                                  can be attached to a
+                                                                   complaint.
+
+FR-CMP-004   The system shall provide Identified,            High  Student can select
+             Confidential, and Anonymous reporting                 one privacy option
+             options.                                              before submission.
+
+FR-CMP-005   The system shall generate a unique              High  A unique ID is
+             tracking ID for each submitted complaint.             generated after
+                                                                   successful
+                                                                   submission.
+
+7.3 AI Complaint Assistant
+Purpose
+To help students describe and structure complaints using natural language.
+Actors
+
+    · Verified Student
+    · AI Service
+Preconditions
+    · Student must access the complaint assistant.
+Main Flow
+    1. Student describes the problem naturally.
+    2. AI analyzes the description.
+    3. AI recommends category, issue, priority, and department.
+    4. AI can generate a structured complaint.
+    5. Student reviews the result.
+    6. Student submits or modifies the complaint.
+Alternative Flows
+    · Student may modify the AI-generated complaint.
+    · Administrator may review and modify AI recommendations.
+Error/Exception Scenarios
+    · AI cannot determine a category.
+    · AI service is unavailable.
+    · AI-generated information requires correction.
+Functional Requirements
+
+Requirement  Requirement                     Priority Acceptance Criteria
+ID
+
+FR-AI-001    The system shall allow students         Natural-language complaint
+             to describe complaints in natural High  text can be entered.
+             language.
+
+             AI shall recommend a complaint          A category recommendation is
+                                                     returned when AI processing
+FR-AI-002    category based on the           High    succeeds.
+
+             description.
+
+FR-AI-003    AI shall recommend complaint    High    A priority recommendation is
+             priority where sufficient               displayed.
+             information is available.
+Requirement  Requirement                     Priority Acceptance Criteria
+ID
+
+FR-AI-004    AI shall recommend a                  A department
+             responsible department where High     recommendation is displayed.
+             sufficient information is available.
+
+FR-AI-005    AI shall be able to convert an  High  A structured complaint can be
+             informal description into a           generated for student review.
+             structured complaint.
+
+FR-AI-006    The student shall be able to          Student can edit or approve
+             review AI-generated complaint High    the generated information.
+             information before submission.
+
+7.4 Harassment & Safety Module
+Purpose
+To provide a protected reporting flow for harassment and safety-related complaints.
+Actors
+
+    · Student
+    · Female Focal Person
+    · Authorized University Staff
+    · System
+Preconditions
+    · Student must have access to the complaint system.
+Main Flow
+    1. Student selects a harassment or safety complaint.
+    2. System opens the protected workflow.
+    3. Student describes the incident.
+    4. Student selects Anonymous or Confidential reporting if required.
+    5. Student indicates whether there is immediate danger.
+    6. Student uploads evidence if available.
+    7. Complaint is routed to authorized personnel.
+    8. Authorized personnel review the case.
+Alternative Flows
+    · Student may submit an identified report.
+    · Student may submit without evidence.
+    · Case may be routed to a Female Focal Person.
+Error/Exception Scenarios
+    · Unauthorized user attempts to access sensitive information.
+    · Evidence upload fails.
+    · Sensitive complaint cannot be routed.
+Functional Requirements
+
+Requirement  Requirement                 Priority Acceptance Criteria
+ID
+
+FR-HAR-001   The system shall provide a  High      Harassment/safety complaints
+             dedicated harassment and              use the protected workflow.
+             safety reporting workflow.
+
+FR-HAR-002   The system shall support    High      Student can select protected
+             anonymous and confidential            reporting.
+             harassment reporting.
+
+FR-HAR-003   The system shall allow students       Immediate-danger information
+             to indicate whether they are in High  can be submitted with the
+             immediate danger.                     case.
+
+FR-HAR-004   The system shall allow      High      Supporting evidence can be
+             harassment evidence to be             attached.
+             submitted.
+Requirement  Requirement                       Priority Acceptance Criteria
+ID
+
+FR-HAR-005   The system shall route sensitive  High  Unauthorized administrators
+             cases to authorized personnel.          cannot access restricted
+                                                     cases.
+
+FR-HAR-006   The system shall support a        High  Authorized Female Focal
+             Female Focal Person role for            Person can access assigned
+             sensitive cases.                        cases.
+
+7.5 Smart Routing & Priority Module
+Purpose
+To assist university authorities in directing complaints to the appropriate department or
+authority.
+Actors
+
+    · AI Service
+    · University Administrator
+    · Authorized Staff
+Preconditions
+    · Complaint must be submitted.
+Main Flow
+    1. AI analyzes complaint information.
+    2. AI recommends category, priority, and department.
+    3. Administrator reviews the recommendations.
+    4. Administrator modifies them if required.
+    5. Complaint is assigned.
+Functional Requirements
+Requirement  Requirement                      Priority Acceptance Criteria
+ID
+
+FR-ROUTE-    The system shall provide AI-     High  Recommended department is
+001          based routing recommendations.         displayed.
+
+FR-ROUTE-    The system shall provide AI-     High  Recommended priority is
+002          based priority recommendations.        displayed.
+
+FR-ROUTE-    Authorized administrators shall  High  Administrator can view
+003          be able to review AI                   recommendations.
+             recommendations.
+
+FR-ROUTE-    Authorized administrators shall  High  Administrator can change the
+004          be able to modify AI                   recommendation before
+             recommendations before                 assigning the complaint.
+             assignment.
+
+7.6 Complaint Tracking Module
+Purpose
+To allow students to monitor the progress of submitted complaints.
+Actors
+
+    · Student
+    · University Administrator
+Main Flow
+    1. Student opens a complaint using its tracking ID.
+    2. System displays the complaint status.
+    3. System displays the status timeline.
+    4. Student receives updates when relevant information changes.
+Functional Requirements
+Requirement   Requirement                         Priority Acceptance Criteria
+ID
+
+FR-TRACK-001  The system shall provide a unique   High    Each complaint has an
+              tracking ID for every complaint.            identifiable tracking ID.
+
+FR-TRACK-002  The system shall display complaint  High    Current complaint status
+              status.                                     is visible.
+
+FR-TRACK-003  The system shall display the        High    Status history is displayed
+              complaint timeline.                         chronologically.
+
+                    The system shall support Submitted,   Supported statuses can
+FR-TRACK-004 Assigned, In Review, Action Taken, High      be applied to complaints.
+
+                    and Resolved statuses.
+
+FR-TRACK-005  The system shall support Escalated  Medium  Authorized users can  use
+              and Reopened states.                        applicable states.
+
+7.7 Escalation Module
+Purpose
+To ensure unattended complaints can move to higher authorities.
+Actors
+
+    · System
+    · University Administrator
+    · HOD
+    · Proctor
+    · Higher Administration
+Preconditions
+    · Complaint must remain unattended beyond the defined response period.
+Main Flow
+    1. System monitors the complaint response period.
+    2. Response period is exceeded.
+    3. Complaint enters escalation workflow.
+    4. Case moves to the next responsible authority.
+Functional Requirements
+
+Requirement  Requirement                              Priority Acceptance Criteria
+ID
+
+FR-ESC-001   The system shall support                 High  Response period can be
+             configurable complaint response                defined for escalation.
+             periods.
+
+FR-ESC-002   The system shall identify complaints           Eligible complaints are
+             exceeding their defined response High          identified for escalation.
+             period.
+
+FR-ESC-003   The system shall support escalation      High  An eligible complaint can
+             to higher university authorities.              be escalated.
+
+FR-ESC-004   The system shall record escalation       High  Escalation information is
+             activity.                                      stored with the complaint.
+
+7.8 Proof of Action & Resolution Module
+Purpose
+To make complaint resolution transparent by requiring administrators to document actions
+taken.
+Actors
+
+    · University Administrator
+    · Authorized Staff
+    · Student
+Main Flow
+    1. Authorized administrator investigates the complaint.
+    2. Administrator records the action taken.
+    3. Administrator provides resolution details.
+    4. Administrator uploads supporting proof where available.
+    5. Complaint is marked Resolved.
+    6. Student views the resolution and proof.
+Functional Requirements
+
+Requirement  Requirement                        Priority Acceptance Criteria
+ID
+
+FR-RES-001   The system shall allow authorized          Action details can be
+             administrators to record actions High      entered.
+             taken.
+
+FR-RES-002   The system shall allow resolution  High    Supporting proof can be
+             evidence to be uploaded.                   attached.
+
+FR-RES-003   The system shall provide           High    Student can view the
+             resolution information to the              resolution record.
+             student.
+
+             The system shall maintain a Proof          Resolved complaint contains
+                                                        the recorded action
+FR-RES-004   of Action record for resolved      High    information.
+
+             complaints.
+
+FR-RES-005   Students shall be able to provide  Medium  Feedback can be    submitted
+             feedback after resolution.                 after resolution.
+
+7.9 University Administration Module
+Purpose
+To provide university authorities with centralized complaint management.
+Actors
+
+    · University Administrator
+    · HOD
+    · Proctor
+    · Female Focal Person
+    · Hostel Warden
+    · Counselor
+    · Other Authorized Staff
+Main Flow
+    1. Authorized staff accesses the dashboard.
+    2. Staff views relevant complaints.
+    3. Staff reviews AI recommendations.
+    4. Staff assigns and manages cases.
+    5. Staff updates status.
+    6. Staff escalates or resolves cases where applicable.
+Functional Requirements
+
+Requirement  Requirement                         Priority Acceptance Criteria
+ID
+
+FR-ADMIN-    The system shall provide an         High       Authorized staff can access
+001          administration dashboard.                      the dashboard.
+
+FR-ADMIN-    The system shall allow authorized   High       Staff can view complaints
+002          staff to view relevant complaints.             according to their
+                                                            permissions.
+
+FR-ADMIN-    The system shall allow authorized   High       A complaint can be assigned
+003          staff to assign complaints.                    to an appropriate authority.
+
+FR-ADMIN-    The system shall allow authorized   High       Authorized staff can update
+004          staff to update complaint status.              applicable statuses.
+
+FR-ADMIN-    The system shall restrict sensitive            Unauthorized staff cannot
+005          complaints according to assigned High          access restricted cases.
+             roles.
+7.10 Student Support Module
+Purpose
+To provide students with support and relevant information in addition to complaint
+reporting.
+Actors
+
+    · Student
+    · System
+Functional Requirements
+
+Requirement  Requirement                    Priority Acceptance Criteria
+ID
+
+FR-SUP-001   The system shall provide       Medium  Available resources can  be
+             mental-health support                  accessed by students.
+             resources.
+
+FR-SUP-002   The system shall support                  A student can submit a counseling
+             anonymous counseling           Medium request anonymously where
+             requests.
+                                                       supported.
+
+FR-SUP-003   The system shall provide       Medium  Student-rights  information     is
+             student-rights information.            accessible.
+
+FR-SUP-004   The system shall provide       Medium  Available information can  be
+             university policies and FAQs.          accessed by students.
+
+FR-SUP-005   The system shall provide       Medium  Emergency contact  information      is
+             emergency contacts.                    accessible.
+
+11. NON-FUNCTIONAL REQUIREMENTS
+11.1 Performance
+No specific numerical performance targets were provided.
+Requirement       Requirement                        Priority Acceptance Criteria
+ID
+
+                  The system should provide                  Core operations function
+                  responsive interaction for normal
+NFR-PERF-         student and administrative         Medium  without unnecessary delays
+001               operations.                                under normal prototype
+
+                                                             usage.
+
+11.2 Security
+
+Requirement       Requirement                        Priority Acceptance Criteria
+ID
+
+                    The system shall restrict                   Users cannot access
+NFR-SEC-001 functionality according to user          High functions outside their
+
+                    roles.                                      permissions.
+
+                  Sensitive complaint information            Unauthorized users cannot
+
+NFR-SEC-002 shall only be accessible to              High access restricted
+
+                  authorized personnel.                      information.
+
+NFR-SEC-003       The system shall validate user                Invalid input or unsupported
+                  input and uploaded evidence.       High uploads are handled
+
+                                                                appropriately.
+
+                    The system shall maintain audit          Relevant actions can be
+NFR-SEC-004 information for relevant sensitive High          traced through audit records.
+
+                    actions.
+
+11.3 Reliability
+
+Requirement       Requirement                        Priority Acceptance Criteria
+ID
+
+                    Complaint records and status     High    Submitted complaints can
+NFR-REL-001 information shall remain available               be retrieved through the
+                                                             system.
+                    after successful submission.
+
+11.4 Availability
+Specific uptime requirements are not specified.
+11.5 Scalability
+
+Requirement     Requirement                            Priority Acceptance Criteria
+ID
+
+NFR-SCAL-       The system architecture shall support      The design does not
+001
+                future expansion to additional         Medium restrict the system to a
+
+                universities and integrations.             single university.
+
+11.6 Usability
+
+Requirement     Requirement                          Priority Acceptance Criteria
+ID
+
+                   The complaint process shall             Students can begin a
+NFR-USE-001 allow students to describe
+                                                     High  complaint without
+                   problems in natural language.           understanding complex
+
+                                                           procedures.
+
+                   Complaint progress shall be       High  Students can understand the
+NFR-USE-002 presented through a simple                     current stage of a complaint.
+
+                   status timeline.
+
+11.7 Accessibility
+
+Requirement     Requirement                       Priority Acceptance Criteria
+ID
+
+                The system shall consider                  Core interface elements are
+
+NFR-ACC-001 accessibility for students with Medium designed with accessibility
+
+                disabilities.                              considerations.
+
+Specific accessibility standards are not specified.
+11.8 Maintainability
+Requirement    Requirement                         Priority Acceptance Criteria
+ID
+
+NFR-MAIN-      The application shall use a                    Core modules can be
+001            modular structure to support        Medium maintained and extended
+               future feature development.
+                                                              independently.
+
+11.9 Compatibility
+
+Requirement    Requirement                         Priority Acceptance Criteria
+ID
+
+NFR-COMP-      The web application shall support         Core screens remain usable
+001            desktop, tablet, and mobile browser High  across supported screen
+               layouts.                                  sizes.
+
+11.10 Privacy
+
+Requirement    Requirement                   Priority Acceptance Criteria
+ID
+
+               Verified students shall be
+
+               able to submit complaints           Anonymous/confidential
+                                                   complaints do not expose identity
+NFR-PRIV-      without automatically         High  to unauthorized users.
+001            exposing their identity to
+
+               unauthorized complaint
+
+               handlers.
+
+NFR-PRIV-      Sensitive harassment          High  Only authorized roles can access
+002            information shall have              protected information.
+               restricted access.
+
+               The system shall follow a           Personal information is only
+
+NFR-PRIV-      privacy-first approach for    High  exposed where required by the
+003            student complaint                   selected reporting mode and user
+
+               information.                        permissions.
+
+NFR-PRIV-      Data is intended to be        Medium Deployment follows the project's
+004            hosted in Pakistan as                    stated data-hosting requirement
+               specified for the project.
+Requirement  Requirement               Priority Acceptance Criteria
+ID
+
+                                       where supported by the selected
+                                       infrastructure.
+
+11.11 Backup and Recovery
+Backup schedules and recovery targets are not specified.
+
+12. UI/UX REQUIREMENTS
+Main Screens/Pages
+The system will provide UI for:
+
+    · Landing page
+    · Registration
+    · University selection
+    · Verification
+    · Student dashboard
+    · AI Complaint Assistant
+    · Complaint submission
+    · Privacy selection
+    · Evidence upload
+    · Complaint tracking
+    · Harassment and safety reporting
+    · Student support
+    · Admin dashboard
+    · Complaint management
+    · Complaint details
+    · Resolution and Proof of Action
+    · Analytics
+    · Female Focal Person/sensitive-case interface
+Navigation
+The interface shall provide clear navigation between available student or administrative
+functions according to the user's role.
+Forms
+Complaint forms shall support:
+    · Natural-language description
+    · Complaint category
+    · Privacy selection
+    · Evidence upload
+    · Harassment/safety information where applicable
+    · Review before submission
+Validation and States
+The system shall provide appropriate:
+    · Input validation
+    · Error states
+    · Loading states
+    · Empty states
+    · Success states
+Exact UI messages are not specified.
+Responsive Behavior
+The web application shall be responsive for desktop, tablet, and mobile screens.
+Accessibility
+The interface shall consider accessibility for students with disabilities.
+13. API / INTEGRATION REQUIREMENTS
+The following integrations are identified in the project information:
+
+Integration           Purpose                                          Current MVP Status
+
+University email/OTP  Student affiliation verification                 Applicable
+
+Student-card OCR/Vision Extract information from student cards Applicable
+
+University student database Validate student affiliation               Future
+
+HEC integration       External escalation                              Future
+
+SMS services          Notifications                                    Future
+
+Specific API endpoints, request fields, response fields, and external API specifications are
+not specified.
+
+The AI service will support complaint classification, priority recommendation, department
+recommendation, structured complaint generation, and student assistance.
+
+14. SYSTEM ARCHITECTURE
+
+The MVP will use the following high-level architecture:
+
+Student/Admin Interface
+
+Next.js Application / API Layer
+
+Supabase PostgreSQL + Storage
+
+AI/OCR Services
+
+Frontend
+
+    · Next.js
+
+    · React
+
+    · TypeScript
+
+    · Tailwind CSS
+
+Backend
+    · Next.js API/server-side functions
+
+Database and Storage
+
+    · Supabase PostgreSQL
+
+    · Supabase Storage
+
+AI Services
+
+AI/LLM services will support complaint understanding, classification, prioritization,
+routing, structured complaint generation, and student assistance.
+
+OCR/Vision capabilities will assist with student-card verification.
+
+Authentication
+
+Authentication and university verification will be supported through the application's
+authentication and verification flow.
+
+Data Flow
+
+Student registration
+ University verification
+ Complaint description
+ AI analysis
+ Privacy selection
+ Evidence
+ Complaint submission
+ Smart routing
+ Administrator action
+ Tracking
+ Escalation where required
+ Proof of Action
+ Resolution
+
+16. NOTIFICATIONS
+
+Notification/Event Trigger         Recipient  Channel Message/Purpose
+
+Complaint status   Complaint       Student    Not  Inform student about
+update             status changes
+                                              specified complaint progress
+Notification/Event Trigger         Recipient Channel Message/Purpose
+
+Case information  Relevant case    Student      Not            Keep student informed
+update            information                   specified
+                  changes
+
+Escalation        Complaint        Responsible  Not            Inform authority of
+                  exceeds          authority
+                  response period               specified escalated case
+
+Resolution        Complaint is     Student      Not            Inform student of
+                  resolved                      specified      resolution and Proof of
+                                                               Action
+
+Specific notification channels are not specified for the MVP.
+
+17. REPORTING / ANALYTICS
+The university administration dashboard shall provide aggregated analytics for identifying
+complaint patterns.
+Supported analytics include:
+
+    · Complaints by category
+    · Complaints by department
+    · Average resolution time
+    · Pending complaints
+    · Escalated complaints
+    · Resolution rate
+    · Recurring facility problems
+Analytics shall avoid exposing sensitive personal information unnecessarily.
+Export functionality is not specified.
+
+21. SECURITY REQUIREMENTS
+Requirement  Requirement                      Priority Acceptance Criteria
+ID
+
+             The system shall authenticate          Unauthenticated users cannot
+                                                    access protected student/admin
+NFR-SEC-005 users before providing            High  functions.
+
+             protected functionality.
+
+NFR-SEC-006  The system shall implement       High  Users can access only functions
+             role-based authorization.              permitted for their role.
+
+                   The system shall protect         Complaint handlers without
+NFR-SEC-007 anonymous complaint identity High       authorization cannot view
+                                                    anonymous identity information.
+                   from unauthorized users.
+
+                   The system shall restrict        Unauthorized administrators
+NFR-SEC-008 sensitive harassment cases to High      cannot access protected
+                                                    harassment information.
+                   authorized roles.
+
+                   The system shall validate             Invalid or unsupported
+NFR-SEC-009 complaint inputs and              High information is rejected or handled
+
+                   uploaded evidence.                    appropriately.
+
+                   The system shall maintain  High  Authorized access and relevant
+NFR-SEC-010 audit records for relevant              case actions can be traced.
+
+                   sensitive actions.
+
+Specific encryption algorithms, password policies, session durations, and security
+standards are not specified.
+
+22. ACCEPTANCE CRITERIA
+CampusAwaz will be considered acceptable for the MVP when:
+
+    1. A student can register and select a participating university.
+    2. A student can verify their university affiliation through the supported verification
+
+         flow.
+    3. A verified student can submit a university-related complaint.
+    4. The student can choose Identified, Confidential, or Anonymous reporting.
+    5. The student can attach supporting evidence.
+    6. The AI Complaint Assistant can analyze a complaint and provide applicable
+
+         recommendations.
+    7. AI-generated complaint information can be reviewed before submission.
+    8. Harassment and safety complaints use a protected workflow.
+    9. Sensitive cases are restricted to authorized personnel.
+    10. Every submitted complaint receives a tracking ID.
+    11. Students can view complaint progress through the defined status timeline.
+    12. Administrators can view and manage complaints according to their roles.
+    13. Administrators can assign and update complaints.
+    14. Complaints can enter the escalation workflow when the defined response period is
+
+         exceeded.
+    15. Administrators can provide resolution information and Proof of Action.
+    16. Students can view the resolution information.
+    17. Relevant complaint status changes can generate notifications.
+    18. The system provides the specified administration analytics.
+    19. The application works across desktop, tablet, and mobile layouts.
+    20. The complete core journey works from verification through resolution:
+Verify  Protect  Report  AI Understands  Route  Track  Escalate  Prove  Resolve
+
+25. FUTURE ENHANCEMENTS
+The following features are outside the initial MVP or require further development:
+
+    · Official university student-information-system integration
+    · Official HEC integration
+    · Automatic external escalation through official integrations
+    · SMS services
+    · Real-time campus security tracking
+· Large-scale deployment across multiple universities
+· Dedicated mobile application
+· Additional student-community features
+· Advanced analytics
+
+AI Opportunities
+
+AI Opportunity      Where It    How AI Would Work Benefit              Priority
+                    Can Be
+                    Used
+
+Complaint           Complaint   Analyze natural-      Reduces          Current/Applicable
+Classification      submission  language complaint    manual
+                                and identify          categorization
+                                category/subcategory
+
+                    Complaint   Analyze issue severity Helps identify
+                    submission
+Priority Detection              and recommend         urgent           Current/Applicable
+
+                                priority              complaints
+
+                                                      Sends
+
+Smart Routing       Complaint   Recommend             complaints to    Current/Applicable
+                    management  responsible           the
+                                department/authority  appropriate
+
+                                                      team faster
+
+Complaint           Complaint   Convert informal      Makes            Current/Applicable
+Generation          submission  student text into a   reporting
+                                structured complaint  easier and
+                                                      clearer
+
+AI Complaint        Student     Understand student    Simplifies the
+Assistant           complaint   questions and guide   complaint Current/Applicable
+                    flow        them toward           process
+                                appropriate
+                                complaint/support
+                                options
+AI Opportunity     Where It      How AI Would Work Benefit               Priority
+                   Can Be
+                   Used
+
+Student Card       Verification  Extract                  Reduces        Current/Applicable
+OCR                              university/student       manual
+                                 information from         verification
+                                 uploaded cards           effort
+
+                                 Retrieve relevant
+
+                                 approved policies, Provides
+
+Policy/FAQ         Student       FAQs, student-rights     easier access  Current/Applicable
+Assistant          support       information, and         to relevant
+
+                                 procedures before information
+
+                                 generating an answer
+
+Complaint          Admin         Analyze aggregated       Helps          Future
+                                 complaint data to        universities   Enhancement
+Pattern Analysis analytics       identify recurring       identify
+                                 issues                   systemic
+                                                          problems
+
+Duplicate/Similar  Complaint     Compare new              Can reduce     Future
+Complaint          management    complaints with          duplicate      Enhancement
+Detection                        existing complaints to   handling
+                                 identify similar issues
+
+For the five-day MVP, the highest-value AI capabilities are complaint classification, priority
+recommendation, smart routing, structured complaint generation, AI assistance, and
+student-card OCR. Other AI opportunities should not delay completion of the core
+complaint-to-resolution workflow.
+
