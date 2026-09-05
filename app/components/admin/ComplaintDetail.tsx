@@ -19,7 +19,6 @@ import { Spinner } from '@/components/ui/Spinner';
 import { EscalationBanner } from '@/components/admin/EscalationBanner';
 import { ResolutionForm } from '@/components/admin/ResolutionForm';
 import { ReopenControl } from '@/components/admin/ReopenControl';
-import { SlaIndicator } from '@/components/admin/SlaIndicator';
 import {
   COMPLAINT_STATUS_PRESENTATION,
   PRIORITY_PRESENTATION,
@@ -106,6 +105,7 @@ export interface ComplaintDetailData {
   studentName: string | null;
   studentAlias: string | null;
   canTakeAction: boolean;
+  viewerId?: string;
   slaDisplay?: SlaDisplay | null;
   identityRequests?: IdentityAccessRequest[];
 }
@@ -413,18 +413,49 @@ function identityRequestStatusTone(status: string): 'info' | 'warning' | 'danger
 
 function IdentityRequestsPanel({
   requests,
+  complaintId,
   trackingId,
   isAdmin,
+  isAssignedAuthority,
   onAction,
 }: {
   requests: IdentityAccessRequest[];
+  complaintId: string;
   trackingId: string;
   isAdmin: boolean;
+  isAssignedAuthority: boolean;
   onAction: () => void;
 }) {
   const [actingId, setActingId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+
+  const hasActiveRequest = requests.some((r) =>
+    ['pending', 'admin_approved', 'granted'].includes(r.status),
+  );
+
+  const canRequest = isAssignedAuthority && !hasActiveRequest;
+
+  async function handleRequestAccess() {
+    setRequesting(true);
+    setRequestError(null);
+    try {
+      const res = await fetch('/api/identity-access/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ complaintId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Failed to submit request');
+      onAction();
+    } catch (err) {
+      setRequestError(err instanceof Error ? err.message : 'Could not submit request.');
+    } finally {
+      setRequesting(false);
+    }
+  }
 
   async function handleDecide(requestId: string, approve: boolean) {
     setActingId(requestId);
@@ -454,6 +485,25 @@ function IdentityRequestsPanel({
         <Eye className="h-5 w-5 text-blue-900" aria-hidden="true" />
         Identity Access Requests
       </h2>
+
+      {canRequest && (
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm text-slate-700">
+            You can request access to the reporter&apos;s identity. If approved by an
+            admin, the student will be asked for final consent. Access expires after
+            48 hours if granted.
+          </p>
+          <Button
+            className="mt-3"
+            onClick={handleRequestAccess}
+            disabled={requesting}
+            loading={requesting}
+          >
+            Request Identity Access
+          </Button>
+          {requestError && <Alert tone="error" className="mt-2">{requestError}</Alert>}
+        </div>
+      )}
 
       {requests.length === 0 ? (
         <p className="mt-3 text-sm text-slate-500">
@@ -623,9 +673,34 @@ export function ComplaintDetail({
         </Card>
         <Card className="p-4">
           <p className="text-xs font-medium text-slate-500">SLA</p>
-          <div className="mt-1">
-            <SlaIndicator sla={slaDisplay ?? null} />
-          </div>
+          {slaDisplay ? (
+            <div className="mt-1 space-y-0.5">
+              <Badge
+                tone={
+                  slaDisplay.state === 'breached'
+                    ? 'danger'
+                    : slaDisplay.state === 'approaching'
+                      ? 'warning'
+                      : 'success'
+                }
+              >
+                {slaDisplay.state === 'breached'
+                  ? 'Breached'
+                  : `${Math.round(slaDisplay.hoursRemaining)}h left`}
+              </Badge>
+              <p className="text-xs text-slate-500">
+                {slaDisplay.responseHours}h response —{' '}
+                {new Date(slaDisplay.responseDeadline).toLocaleString('en-PK', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-slate-400">No SLA rule</p>
+          )}
         </Card>
       </div>
 
@@ -673,8 +748,10 @@ export function ComplaintDetail({
       {(complaint.privacy_mode === 'anonymous' || complaint.privacy_mode === 'confidential') && (
         <IdentityRequestsPanel
           requests={identityRequests}
+          complaintId={complaint.id}
           trackingId={complaint.tracking_id}
           isAdmin={isAdmin}
+          isAssignedAuthority={assignedTo === detail.viewerId}
           onAction={refresh}
         />
       )}
@@ -733,8 +810,8 @@ export function ComplaintDetail({
         <ResolutionForm trackingId={complaint.tracking_id} onSuccess={refresh} />
       )}
 
-      {/* Reopen Control — visible when complaint is resolved and user can act */}
-      {detail.canTakeAction && complaint.status === 'resolved' && (
+      {/* Reopen Control — admin only */}
+      {isAdmin && complaint.status === 'resolved' && (
         <Card>
           <h2 className="text-lg font-bold text-slate-900">Reopen</h2>
           <div className="mt-4">
@@ -743,8 +820,8 @@ export function ComplaintDetail({
         </Card>
       )}
 
-      {/* Escalate — visible only when user can take action */}
-      {detail.canTakeAction && (
+      {/* Escalate — admin only */}
+      {isAdmin && (
         <Card>
           <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
             <UserCheck className="h-5 w-5 text-blue-900" aria-hidden="true" />

@@ -69,6 +69,7 @@ export default async function AdminComplaintDetailPage({
           studentName: detail.studentName,
           studentAlias: detail.studentAlias,
           canTakeAction: detail.canTakeAction,
+          viewerId: user.id,
           slaDisplay: detail.slaDisplay,
           identityRequests: detail.identityRequests,
         }}

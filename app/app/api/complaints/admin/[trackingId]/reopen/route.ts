@@ -47,7 +47,7 @@ export async function POST(
 
     const { data: complaint } = await admin
       .from('complaints')
-      .select('assigned_to')
+      .select('id')
       .eq('tracking_id', trackingId)
       .eq('university_id', profile.university_id)
       .maybeSingle();
@@ -56,9 +56,9 @@ export async function POST(
       return NextResponse.json({ error: 'Complaint not found.' }, { status: 404 });
     }
 
-    if (complaint.assigned_to && complaint.assigned_to !== user.id) {
+    if (!roles.includes('admin')) {
       return NextResponse.json(
-        { error: 'Only the assigned authority can reopen this complaint.' },
+        { error: 'Only admins can reopen complaints.' },
         { status: 403 },
       );
     }
