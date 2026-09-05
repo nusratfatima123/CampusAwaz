@@ -1,3 +1,29 @@
+﻿
+export type AuthorityRequestStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'suspended'
+  | 'reinstated';
+export type AuthorityRequest = {
+  id: string;
+  user_id: string;
+  university_id: string;
+  role_id: string;
+  department_id: string | null;
+  status: AuthorityRequestStatus;
+  statement: string;
+  evidence_path: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_reason: string | null;
+  suspended_by: string | null;
+  suspended_at: string | null;
+  suspension_reason: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /**
  * Hand-maintained TypeScript types mirroring the Supabase schema defined in
  * `supabase/migrations/001_initial.sql`.
@@ -5,7 +31,7 @@
  * Regenerate with:
  *   npx supabase gen types typescript --project-id <ref> > types/database.ts
  *
- * IMPORTANT — declare row shapes below with `type X = { ... }`, never
+ * IMPORTANT â€” declare row shapes below with `type X = { ... }`, never
  * `interface X { ... }`. Supabase's `GenericSchema` constraint requires each
  * table's Row/Insert/Update to be assignable to `Record<string, unknown>`.
  * An `interface` has no implicit index signature, so it fails that constraint;
@@ -109,13 +135,13 @@ export type AuditLog = {
   created_at: string;
 }
 
-/** Profile joined with its university — the shape used across the auth shell. */
+/** Profile joined with its university â€” the shape used across the auth shell. */
 export interface ProfileWithUniversity extends Profile {
   universities: Pick<University, 'id' | 'name' | 'code' | 'allowed_email_domains'> | null;
 }
 
 // ---------------------------------------------------------------------------
-// Sprint 2 — complaints
+// Sprint 2 â€” complaints
 // ---------------------------------------------------------------------------
 
 export type ComplaintCategoryKey =
@@ -164,9 +190,9 @@ export type Complaint = {
   immediate_danger: boolean;
   submitted_at: string;
   updated_at: string;
-  /** Sprint 3 — owning department after smart routing. */
+  /** Sprint 3 â€” owning department after smart routing. */
   department_id: string | null;
-  /** Sprint 3 — staff member the case is assigned to. */
+  /** Sprint 3 â€” staff member the case is assigned to. */
   assigned_to: string | null;
 };
 
@@ -215,7 +241,7 @@ export type TrackingIdSequence = {
   last_number: number;
 };
 
-/** Complaint joined with its category — the shape rendered by the UI. */
+/** Complaint joined with its category â€” the shape rendered by the UI. */
 export interface ComplaintWithCategory extends Complaint {
   complaint_categories: Pick<
     ComplaintCategory,
@@ -224,7 +250,7 @@ export interface ComplaintWithCategory extends Complaint {
 }
 
 // ---------------------------------------------------------------------------
-// Sprint 3 — AI assistant & smart routing
+// Sprint 3 â€” AI assistant & smart routing
 // ---------------------------------------------------------------------------
 
 /** Shared department key set seeded for every university. */
@@ -328,7 +354,7 @@ export type ComplaintAssignment = {
 };
 
 // ---------------------------------------------------------------------------
-// Sprint 5 — escalation, resolution & feedback
+// Sprint 5 â€” escalation, resolution & feedback
 // ---------------------------------------------------------------------------
 
 export type SlaRule = {
@@ -385,7 +411,7 @@ export type Feedback = {
 };
 
 // ---------------------------------------------------------------------------
-// Sprint 8 — identity access requests
+// Sprint 8 â€” identity access requests
 // ---------------------------------------------------------------------------
 
 export type IdentityAccessRequestStatus =
@@ -423,7 +449,7 @@ export type SlaDisplay = {
 };
 
 // ---------------------------------------------------------------------------
-// Sprint 6 — support, counseling, FAQ, policies, emergency & analytics
+// Sprint 6 â€” support, counseling, FAQ, policies, emergency & analytics
 // ---------------------------------------------------------------------------
 
 export type SupportResourceType =
@@ -525,11 +551,68 @@ export type AnalyticsSummary = {
 
 /**
  * Minimal Database interface for the Supabase client generics. Only the tables
- * touched in Sprints 1–6 are described.
+ * touched in Sprints 1â€“6 are described.
  */
 export interface Database {
   public: {
     Tables: {
+authority_requests: {
+  Row: {
+    id: string;
+    user_id: string;
+    university_id: string;
+    role_id: string;
+    department_id: string | null;
+    status: AuthorityRequestStatus;
+    statement: string;
+    evidence_path: string | null;
+    reviewed_by: string | null;
+    review_reason: string | null;
+    reviewed_at: string | null;
+    suspended_by: string | null;
+    suspension_reason: string | null;
+    suspended_at: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+  Insert: {
+    id?: string;
+    user_id: string;
+    university_id: string;
+    role_id: string;
+    department_id?: string | null;
+    status?: AuthorityRequestStatus;
+    statement: string;
+    evidence_path?: string | null;
+    reviewed_by?: string | null;
+    review_reason?: string | null;
+    reviewed_at?: string | null;
+    suspended_by?: string | null;
+    suspension_reason?: string | null;
+    suspended_at?: string | null;
+    created_at?: string;
+    updated_at?: string;
+  };
+  Update: {
+    id?: string;
+    user_id?: string;
+    university_id?: string;
+    role_id?: string;
+    department_id?: string | null;
+    status?: AuthorityRequestStatus;
+    statement?: string;
+    evidence_path?: string | null;
+    reviewed_by?: string | null;
+    review_reason?: string | null;
+    reviewed_at?: string | null;
+    suspended_by?: string | null;
+    suspension_reason?: string | null;
+    suspended_at?: string | null;
+    created_at?: string;
+    updated_at?: string;
+  };
+  Relationships: [];
+};
       universities: {
         Row: University;
         Insert: Partial<University> & { name: string; code: string };
@@ -833,3 +916,4 @@ export interface Database {
     CompositeTypes: Record<never, never>;
   };
 }
+

@@ -12,7 +12,13 @@
  * TypeScript then falls back to `Schema = any` and every query result silently
  * degrades to `never` (e.g. "Property 'x' does not exist on type 'never'").
  */
-
+export type AuthorityRequestStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'suspended'
+  | 'reinstated';
+  
 export type AffiliationStatus =
   | 'unverified'
   | 'pending_email'
@@ -382,6 +388,40 @@ export type Feedback = {
   rating: number;
   comment: string | null;
   created_at: string;
+};
+
+export type IdentityAccessRequestStatus =
+  | 'pending'
+  | 'admin_approved'
+  | 'admin_denied'
+  | 'granted'
+  | 'denied'
+  | 'expired';
+
+export type IdentityAccessRequest = {
+  id: string;
+  complaint_id: string;
+  requester_id: string;
+  requested_by_role: string;
+  status: IdentityAccessRequestStatus;
+  admin_decided_by: string | null;
+  admin_decided_at: string | null;
+  admin_notes: string | null;
+  student_decided_at: string | null;
+  student_notes: string | null;
+  granted_at: string | null;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SlaState = 'on_track' | 'approaching' | 'breached';
+
+export type SlaDisplay = {
+  state: SlaState;
+  hoursRemaining: number;
+  responseDeadline: string;
+  responseHours: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -795,6 +835,16 @@ export interface Database {
           statement: string;
         };
         Update: Partial<AuthorityRequest>;
+        Relationships: [];
+      };
+      identity_access_requests: {
+        Row: IdentityAccessRequest;
+        Insert: Partial<IdentityAccessRequest> & {
+          complaint_id: string;
+          requester_id: string;
+          requested_by_role: string;
+        };
+        Update: Partial<IdentityAccessRequest>;
         Relationships: [];
       };
     };

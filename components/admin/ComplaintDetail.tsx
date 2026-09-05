@@ -26,7 +26,7 @@ import {
   statusTone,
 } from '@/lib/complaint-ui';
 import { cn } from '@/lib/cn';
-import type { ComplaintStatus } from '@/types/database';
+import type { ComplaintStatus, SlaDisplay, IdentityAccessRequest } from '@/types/database';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -99,6 +99,9 @@ export interface ComplaintDetailData {
   studentName: string | null;
   studentAlias: string | null;
   canTakeAction: boolean;
+  viewerId?: string;
+  slaDisplay?: SlaDisplay | null;
+  identityRequests?: IdentityAccessRequest[];
 }
 
 // ---------------------------------------------------------------------------
