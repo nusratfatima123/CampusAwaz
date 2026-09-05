@@ -3,7 +3,6 @@ import { createAdminClient } from './supabase/admin';
 /** Canonical audit event names used across Sprint 1. */
 export const AUDIT_EVENTS = {
   IDENTITY_ACCESS_USED: 'identity_access.used',
-  AUTHORITY_REQUEST_CREATED: 'authority_request.created',
   USER_REGISTERED: 'user.registered',
   USER_LOGIN: 'user.login',
   USER_LOGOUT: 'user.logout',
