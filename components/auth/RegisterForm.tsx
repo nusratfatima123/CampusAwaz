@@ -213,7 +213,33 @@ export function RegisterForm({
         return;
       }
 
-      // Email confirmation is required → show success message
+      // Email confirmation is required → auto-confirm and sign-in
+      if (data.user) {
+        try {
+          const confirmRes = await fetch('/api/auth/confirm-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email.trim() }),
+          });
+
+          if (confirmRes.ok) {
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+              email: email.trim(),
+              password,
+            });
+
+            if (!signInError) {
+              router.replace('/verify');
+              router.refresh();
+              return;
+            }
+          }
+        } catch {
+          // Fall through to fallback message
+        }
+      }
+
+      // Fallback: show success message if auto-confirm fails
       setFormError(null);
       setNotice('Check your email to confirm your account before signing in.');
       setEmail('');

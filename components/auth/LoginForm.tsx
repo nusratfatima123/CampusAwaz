@@ -69,10 +69,95 @@ export function LoginForm() {
           setFormError('Incorrect email or password. Please try again.');
           setNeedsConfirmation(false);
         } else if (message.includes('email not confirmed')) {
-          setFormError(
-            'Please check your email and click the confirmation link before signing in. Check your spam folder if you don\'t see it.'
-          );
-          setNeedsConfirmation(true);
+          // Auto-confirm the user's email and retry sign-in
+          try {
+            const confirmRes = await fetch('/api/auth/confirm-email', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: email.trim() }),
+            });
+
+            if (confirmRes.ok) {
+              // Retry sign-in now that email is confirmed
+              const retry = await supabase.auth.signInWithPassword({
+                email: email.trim(),
+                password,
+              });
+
+              if (retry.error) {
+                setFormError(retry.error.message);
+                return;
+              }
+
+              if (!retry.data.user) {
+                setFormError('Sign in failed. Please try again.');
+                return;
+              }
+
+              // Route based on verification state and role (same as below)
+              const { data: profileData } = await supabase
+                .from('profiles')
+                .select('affiliation_status')
+                .eq('id', retry.data.user.id)
+                .maybeSingle();
+
+              const nextParam = searchParams.get('next');
+              const verified = profileData?.affiliation_status === 'verified';
+
+              const STAFF_ROLES = [
+                'admin',
+                'hod',
+                'proctor',
+                'female_focal_person',
+                'hostel_warden',
+                'counselor',
+              ];
+              const { data: roleRowsData } = await supabase
+                .from('user_roles')
+                .select('roles ( name )')
+                .eq('user_id', retry.data.user.id);
+              const userRoles = (
+                (roleRowsData ?? []) as unknown as {
+                  roles: { name: string } | null;
+                }[]
+              )
+                .map((row) => row.roles?.name)
+                .filter((n): n is string => Boolean(n));
+              const isStaffUser = userRoles.some((role) =>
+                STAFF_ROLES.includes(role)
+              );
+
+              if (!verified && !isStaffUser) {
+                router.replace('/verify');
+                router.refresh();
+                return;
+              }
+
+              const destination =
+                nextParam || (isStaffUser ? '/admin/dashboard' : '/dashboard');
+              router.replace(destination);
+              router.refresh();
+              return;
+            }
+          } catch {
+            // Fall through to resend flow
+          }
+
+          // Fallback: auto-resend confirmation email
+          try {
+            await fetch('/api/auth/resend', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: email.trim() }),
+            });
+            setNotice(
+              'A confirmation email has been sent. Please click the link in the email, then come back and sign in.'
+            );
+          } catch {
+            setNotice(
+              'Please check your email and click the confirmation link before signing in.'
+            );
+          }
         } else {
           setFormError(error.message);
           setNeedsConfirmation(false);
