@@ -31,9 +31,9 @@ const nextConfig = {
       loader: 'ignore-loader',
     });
 
-    // Ignore stale type files from the standalone project's build output
+    // Ignore stale files from the standalone project's build output
     config.module.rules.push({
-      test: /\.(ts|tsx)$/,
+      test: /\.(js|ts|tsx)$/,
       include: [/app[/\\]\.next/],
       loader: 'ignore-loader',
     });

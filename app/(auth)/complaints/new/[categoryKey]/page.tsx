@@ -27,6 +27,7 @@ export default async function StandardComplaintPage({
 
   if (!user) redirect('/login');
   if (!isVerified(profile)) redirect('/pending');
+  if (!profile?.university_id) redirect('/verify/university');
 
   if (params.categoryKey === SENSITIVE_CATEGORY_KEY) {
     redirect('/complaints/new/safety');

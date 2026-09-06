@@ -22,6 +22,7 @@ export default async function TrackingPage() {
 
   if (!user) redirect('/login');
   if (!isVerified(profile)) redirect('/pending');
+  if (!profile?.university_id) redirect('/verify/university');
 
   return (
     <div className="container-page py-10 md:py-14">

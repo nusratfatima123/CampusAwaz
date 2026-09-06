@@ -51,6 +51,7 @@ export default async function ComplaintDetailPage({
 
   if (!user) redirect('/login');
   if (!isVerified(profile)) redirect('/pending');
+  if (!profile?.university_id) redirect('/verify/university');
 
   const trackingId = decodeURIComponent(params.trackingId ?? '');
   if (!isTrackingIdShape(trackingId)) notFound();
