@@ -46,16 +46,9 @@ export async function POST(request: Request) {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from('profiles')
-      .select('id, full_name, university_id, affiliation_status')
+      .select('id, full_name, university_id')
       .eq('id', user.id)
       .maybeSingle();
-
-    if (profile?.affiliation_status !== 'verified') {
-      return NextResponse.json(
-        { error: 'Verify your university affiliation before using the assistant.' },
-        { status: 403 }
-      );
-    }
 
     userId = user.id;
     userEmail = user.email ?? null;
