@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ShieldCheck, Users } from 'lucide-react';
+import { ShieldCheck, ShieldOff, Users } from 'lucide-react';
 import {
   AuthorityRequestTable,
   type AdminRequestRow,
@@ -97,6 +97,24 @@ export function AuthoritiesManager() {
     (r) => r.status === 'approved' || r.status === 'reinstated'
   );
 
+  const suspendedRequests = requests.filter((r) => r.status === 'suspended');
+
+  async function handleReinstate(requestId: string) {
+    const res = await fetch('/api/authority/admin/reinstate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId }),
+    });
+
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}));
+      alert(json.error ?? 'Failed to reinstate authority.');
+      return;
+    }
+
+    await fetchRequests();
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -189,6 +207,65 @@ export function AuthoritiesManager() {
                         onClick={() => setSuspendTarget(req)}
                       >
                         Suspend
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+
+      {suspendedRequests.length > 0 ? (
+        <div>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-slate-900">
+            <ShieldOff className="h-5 w-5 text-amber-700" aria-hidden="true" />
+            Suspended Authorities
+          </h2>
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th scope="col" className="px-5 py-3 font-semibold">
+                    Name
+                  </th>
+                  <th scope="col" className="px-5 py-3 font-semibold">
+                    Role
+                  </th>
+                  <th scope="col" className="px-5 py-3 font-semibold">
+                    Reason
+                  </th>
+                  <th scope="col" className="px-5 py-3 font-semibold">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {suspendedRequests.map((req) => (
+                  <tr key={req.id}>
+                    <td className="px-5 py-4">
+                      <span className="text-sm font-medium text-slate-900">
+                        {req.user_name ?? 'Unknown'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <Badge tone="neutral">
+                        {req.role_name ? roleLabel(req.role_name) : 'Unknown'}
+                      </Badge>
+                    </td>
+                    <td className="px-5 py-4">
+                      <span className="text-sm text-slate-600">
+                        {req.suspension_reason ?? '—'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleReinstate(req.id)}
+                      >
+                        Reinstate
                       </Button>
                     </td>
                   </tr>

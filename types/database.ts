@@ -12,13 +12,6 @@
  * TypeScript then falls back to `Schema = any` and every query result silently
  * degrades to `never` (e.g. "Property 'x' does not exist on type 'never'").
  */
-export type AuthorityRequestStatus =
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'suspended'
-  | 'reinstated';
-  
 export type AffiliationStatus =
   | 'unverified'
   | 'pending_email'

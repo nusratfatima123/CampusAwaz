@@ -272,12 +272,13 @@ export interface ComplaintDetailResult {
   history: ComplaintStatusHistory[];
   privacy: Pick<ComplaintPrivacy, 'anonymous_alias' | 'exposed_to'> | null;
   aiRecommendation: AiRecommendation | null;
-  assignments: ComplaintAssignment[];
+  assignments: (ComplaintAssignment & { assignee_name: string | null; assigned_by_name: string | null })[];
   escalations: Escalation[];
   proofOfAction: ProofOfAction | null;
   resolutionEvidence: ResolutionEvidence[];
   feedback: Feedback | null;
   identityVisible: boolean;
+  evidenceVisible: boolean;
   studentName: string | null;
   studentAlias: string | null;
   canTakeAction: boolean;
@@ -407,6 +408,10 @@ export async function getComplaintDetail(
     (typed.privacy_mode === 'confidential' &&
       (privacy?.exposed_to ?? []).includes(userId));
 
+  const evidenceVisible =
+    typed.privacy_mode !== 'confidential' ||
+    (privacy?.exposed_to ?? []).includes(userId);
+
   // Resolve display name.
   let studentName: string | null = null;
   let studentAlias: string | null = null;
@@ -426,6 +431,29 @@ export async function getComplaintDetail(
   const canTakeAction =
     roles.includes('admin') || typed.assigned_to === userId;
 
+  // Resolve assignee/assigner names for assignment history.
+  const rawAssignments = (assignmentsResult.data ?? []) as ComplaintAssignment[];
+  const userIds = new Set<string>();
+  for (const a of rawAssignments) {
+    if (a.assigned_to) userIds.add(a.assigned_to);
+    if (a.assigned_by) userIds.add(a.assigned_by);
+  }
+  let nameById = new Map<string, string>();
+  if (userIds.size > 0) {
+    const { data: assigneeProfiles } = await admin
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', [...userIds]);
+    nameById = new Map(
+      (assigneeProfiles ?? []).map((p) => [p.id, p.full_name?.trim() || 'Unnamed staff']),
+    );
+  }
+  const assignments = rawAssignments.map((a) => ({
+    ...a,
+    assignee_name: a.assigned_to ? (nameById.get(a.assigned_to) ?? 'Unnamed staff') : null,
+    assigned_by_name: a.assigned_by ? (nameById.get(a.assigned_by) ?? 'Unnamed staff') : null,
+  }));
+
   // --- SLA display ---------------------------------------------------------
   let slaDisplay: { state: 'on_track' | 'approaching' | 'breached'; hoursRemaining: number; responseDeadline: string; responseHours: number } | null = null;
   if (typed.university_id && typed.category_id) {
@@ -444,16 +472,21 @@ export async function getComplaintDetail(
 
   return {
     complaint: typed,
-    evidence: (evidenceResult.data ?? []) as ComplaintEvidence[],
+    evidence: evidenceVisible
+      ? (evidenceResult.data ?? []) as ComplaintEvidence[]
+      : [],
     history: (historyResult.data ?? []) as ComplaintStatusHistory[],
     privacy,
     aiRecommendation: (recommendationResult.data as AiRecommendation | null) ?? null,
-    assignments: (assignmentsResult.data ?? []) as ComplaintAssignment[],
+    assignments,
     escalations: (escalationsResult.data ?? []) as Escalation[],
     proofOfAction: (proofResult.data as ProofOfAction | null) ?? null,
-    resolutionEvidence: (resolutionEvidenceResult.data ?? []) as ResolutionEvidence[],
+    resolutionEvidence: evidenceVisible
+      ? (resolutionEvidenceResult.data ?? []) as ResolutionEvidence[]
+      : [],
     feedback: (feedbackResult.data as Feedback | null) ?? null,
     identityVisible,
+    evidenceVisible,
     studentName,
     studentAlias,
     canTakeAction,
@@ -503,18 +536,27 @@ export async function assignComplaint(
     }
   }
 
-  // Verify the assignee exists and is staff.
+  if (complaint.assigned_to) {
+    throw new Error('This complaint already has an assigned authority.');
+  }
+
+  // Verify the assignee exists and is staff at the same university.
   const { data: assigneeRoles } = await admin
     .from('user_roles')
-    .select('roles ( name )')
+    .select('roles ( name ), university_id')
     .eq('user_id', input.assigneeId);
 
-  const roleNames = ((assigneeRoles ?? []) as unknown as { roles: { name: RoleName } | null }[])
+  const roleNames = ((assigneeRoles ?? []) as unknown as { roles: { name: RoleName } | null; university_id: string | null }[])
     .map((r) => r.roles?.name)
     .filter((n): n is RoleName => Boolean(n));
 
   if (roleNames.length === 0) {
     throw new Error('The selected user is not a staff member.');
+  }
+
+  const assigneeUni = (assigneeRoles as unknown as { university_id: string | null }[])[0]?.university_id;
+  if (assigneeUni && assigneeUni !== complaint.university_id) {
+    throw new Error('The selected user is not at your university.');
   }
 
   // Insert assignment history row.
@@ -581,7 +623,7 @@ export async function assignComplaint(
     request,
   );
 
-  await audit(AUDIT_EVENTS.COMPLAINT_REASSIGNED, {
+  await audit(AUDIT_EVENTS.COMPLAINT_ASSIGNED, {
     userId: input.actor.userId,
     actor: 'admin',
     metadata: {

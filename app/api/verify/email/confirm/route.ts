@@ -177,10 +177,21 @@ export async function POST(request: Request) {
     })
     .eq('id', record.id);
 
-  await admin
+  const { error: profileUpdateError } = await admin
     .from('profiles')
     .update({ affiliation_status: statusAfterEmailConfirmed() })
     .eq('id', user.id);
+
+  if (profileUpdateError) {
+    console.error(
+      '[verify/email/confirm] profile update failed:',
+      profileUpdateError.message
+    );
+    return NextResponse.json(
+      { error: 'Verification succeeded but could not update your profile. Please contact support.' },
+      { status: 500 }
+    );
+  }
 
   await audit(AUDIT_EVENTS.VERIFICATION_EMAIL_CONFIRMED, {
     userId: user.id,

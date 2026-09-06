@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { analyzeComplaint, prepareAiInput } from '@/lib/ai';
 import {
   createAiSession,
@@ -43,8 +42,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Not authenticated.' }, { status: 401 });
     }
 
-    const admin = createAdminClient();
-    const { data: profile } = await admin
+    const { data: profile } = await supabase
       .from('profiles')
       .select('id, full_name, university_id')
       .eq('id', user.id)
@@ -110,6 +108,13 @@ export async function POST(request: Request) {
   // student can never analyse against another university's routing table.
   const universityId = profileUniversityId;
 
+  if (!universityId) {
+    return NextResponse.json(
+      { error: 'Select your university before using the assistant.' },
+      { status: 400 }
+    );
+  }
+
   // --- Identity stripping BEFORE storage and BEFORE the provider call -------
   const names = [profileName, userEmail?.split('@')[0] ?? null].filter(
     (value): value is string => Boolean(value && value.trim())
@@ -140,9 +145,7 @@ export async function POST(request: Request) {
   // Department resolution requires a university; skip it if not set.
   const [category, department] = await Promise.all([
     getCategoryByKeyForRouting(analysis.category_key),
-    universityId
-      ? resolveDepartment(universityId, analysis.department_key, analysis.category_key)
-      : Promise.resolve(null),
+    resolveDepartment(universityId, analysis.department_key, analysis.category_key),
   ]);
 
   const recommendation = await persistRecommendation({

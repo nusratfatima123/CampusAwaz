@@ -18,7 +18,9 @@ export default async function NewComplaintPage() {
 
   if (!user) redirect('/login');
   if (!isVerified(profile)) redirect('/pending');
-  if (!profile?.university_id) redirect('/verify/university');
+  if (!profile?.university_id) {
+    redirect('/verify/university');
+  }
 
   const categories = await getActiveCategories();
 

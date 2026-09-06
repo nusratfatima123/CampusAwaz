@@ -8,6 +8,16 @@ import {
   Shield,
   Sparkles,
   UserCheck,
+  AlertTriangle,
+  CheckCircle,
+  Timer,
+  Paperclip,
+  FileText,
+  ExternalLink,
+  Star,
+  Users,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +35,7 @@ import {
   statusLabel,
   statusTone,
 } from '@/lib/complaint-ui';
+import { formatBytes } from '@/lib/validators';
 import { cn } from '@/lib/cn';
 import type { ComplaintStatus, SlaDisplay, IdentityAccessRequest } from '@/types/database';
 
@@ -47,6 +58,8 @@ export interface AssignmentEntry {
   department_id: string | null;
   notes: string | null;
   created_at: string;
+  assignee_name: string | null;
+  assigned_by_name: string | null;
 }
 
 export interface ComplaintDetailData {
@@ -62,6 +75,7 @@ export interface ComplaintDetailData {
     immediate_danger: boolean;
     submitted_at: string;
     updated_at: string;
+    assigned_to: string | null;
     complaint_categories: { key: string; label: string } | null;
   };
   history: StatusHistoryEntry[];
@@ -86,7 +100,8 @@ export interface ComplaintDetailData {
     id: string;
     file_name: string;
     file_type: string;
-    storage_path: string;
+    storage_path?: string;
+    url?: string | null;
     created_at: string;
   }[];
   feedback: {
@@ -95,10 +110,20 @@ export interface ComplaintDetailData {
     comment: string | null;
     created_at: string;
   } | null;
+  evidence: {
+    id: string;
+    fileName: string;
+    fileType: string;
+    fileSizeBytes: number;
+    createdAt: string;
+    url: string | null;
+  }[];
   identityVisible: boolean;
+  evidenceVisible: boolean;
   studentName: string | null;
   studentAlias: string | null;
   canTakeAction: boolean;
+  isAdmin: boolean;
   viewerId?: string;
   slaDisplay?: SlaDisplay | null;
   identityRequests?: IdentityAccessRequest[];
@@ -155,122 +180,285 @@ function StatusTimeline({ history }: { history: StatusHistoryEntry[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Action Panel
+// Escalate Panel
 // ---------------------------------------------------------------------------
 
-function ActionPanel({
+function EscalatePanel({
   trackingId,
-  currentStatus,
+  slaDisplay,
   onAction,
 }: {
   trackingId: string;
-  currentStatus: ComplaintStatus;
+  slaDisplay: SlaDisplay | null | undefined;
   onAction: () => void;
 }) {
-  const router = useRouter();
-  const [newStatus, setNewStatus] = useState('');
-  const [notes, setNotes] = useState('');
+  const [reason, setReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  // Valid transitions for Sprint 5.
-  const validTransitions: Record<ComplaintStatus, ComplaintStatus[]> = {
-    submitted: ['assigned', 'in_review'],
-    assigned: ['in_review', 'escalated'],
-    in_review: ['action_taken', 'escalated'],
-    action_taken: ['resolved'],
-    resolved: ['reopened'],
-    escalated: ['in_review', 'assigned'],
-    reopened: ['in_review'],
-  };
+  const slaState = slaDisplay?.state ?? null;
+  const hoursRemaining = slaDisplay?.hoursRemaining ?? null;
+  const responseHours = slaDisplay?.responseHours ?? null;
 
-  const transitions = validTransitions[currentStatus] ?? [];
+  const slaIcon = slaState === 'breached' ? AlertTriangle : slaState === 'approaching' ? Timer : CheckCircle;
+  const SlaIcon = slaIcon;
+  const slaTone = slaState === 'breached' ? 'error' : slaState === 'approaching' ? 'warning' : 'success';
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleEscalate(e: React.FormEvent) {
     e.preventDefault();
-    if (!newStatus) return;
+    if (reason.trim().length < 10) return;
 
     setSubmitting(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/complaints/admin/${trackingId}/status`, {
+      const res = await fetch(`/api/complaints/admin/${trackingId}/escalate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, notes: notes.trim() || undefined }),
+        body: JSON.stringify({ reason: reason.trim() }),
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Failed to change status');
+      if (!res.ok) throw new Error(json.error ?? 'Failed to escalate');
 
-      setNewStatus('');
-      setNotes('');
+      setSuccess(true);
+      setReason('');
       onAction();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not change status.');
+      setError(err instanceof Error ? err.message : 'Could not escalate complaint.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (transitions.length === 0) {
+  return (
+    <div className="space-y-4">
+      {slaDisplay && (
+        <div className={cn(
+          'rounded-xl border p-4',
+          slaState === 'breached' ? 'border-red-200 bg-red-50' :
+          slaState === 'approaching' ? 'border-amber-200 bg-amber-50' :
+          'border-green-200 bg-green-50'
+        )}>
+          <div className="flex items-center gap-2">
+            <SlaIcon className={cn(
+              'h-5 w-5',
+              slaState === 'breached' ? 'text-red-600' :
+              slaState === 'approaching' ? 'text-amber-600' :
+              'text-green-600'
+            )} aria-hidden="true" />
+            <span className={cn(
+              'text-sm font-semibold',
+              slaState === 'breached' ? 'text-red-800' :
+              slaState === 'approaching' ? 'text-amber-800' :
+              'text-green-800'
+            )}>
+              SLA {slaState === 'breached' ? 'Breached' : slaState === 'approaching' ? 'Approaching Deadline' : 'On Track'}
+            </span>
+          </div>
+          <div className="mt-2 space-y-1 text-sm text-slate-700">
+            <p>
+              <span className="font-medium">Response window:</span> {responseHours} hours
+            </p>
+            {hoursRemaining !== null && (
+              <p>
+                <span className="font-medium">
+                  {slaState === 'breached' ? 'Overdue by:' : 'Time remaining:'}
+                </span>{' '}
+                {slaState === 'breached'
+                  ? `${Math.abs(hoursRemaining)} hours overdue`
+                  : `${hoursRemaining} hours remaining`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <Alert tone="success">Complaint escalated successfully.</Alert>
+      )}
+
+      <form onSubmit={handleEscalate} className="space-y-4">
+        <div>
+          <label
+            htmlFor="escalate-reason"
+            className="mb-1.5 block text-sm font-medium text-slate-700"
+          >
+            Reason for escalation
+          </label>
+          <textarea
+            id="escalate-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Explain why this complaint needs escalation (min. 10 characters)..."
+          />
+        </div>
+
+        {error && <Alert tone="error">{error}</Alert>}
+
+        <Button type="submit" disabled={reason.trim().length < 10 || submitting} loading={submitting}>
+          {submitting ? 'Escalating...' : 'Escalate Complaint'}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Assignment Form
+// ---------------------------------------------------------------------------
+
+interface AssignableStaffOption {
+  userId: string;
+  name: string;
+  role: string;
+}
+
+const ROLE_LABELS: Record<string, string> = {
+  hod: 'HOD',
+  proctor: 'Proctor',
+  female_focal_person: 'Female Focal Person',
+  hostel_warden: 'Hostel Warden',
+  counselor: 'Counselor',
+  admin: 'Admin',
+};
+
+function AssignmentForm({
+  trackingId,
+  onAction,
+}: {
+  trackingId: string;
+  onAction: () => void;
+}) {
+  const [staff, setStaff] = useState<AssignableStaffOption[]>([]);
+  const [assigneeId, setAssigneeId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useState(() => {
+    fetch('/api/complaints/admin/staff')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setStaff(json.staff);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  });
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!assigneeId) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/complaints/admin/${trackingId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assigneeId, notes: notes.trim() || undefined }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Failed to assign');
+
+      setSuccess(true);
+      setAssigneeId('');
+      setNotes('');
+      onAction();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not assign complaint.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loading) {
     return (
-      <Alert tone="info" title="Terminal status">
-        This complaint is {currentStatus === 'resolved' ? 'resolved' : 'in a terminal state'}.
-        No further status changes are available.
-      </Alert>
+      <Card>
+        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+          <UserCheck className="h-5 w-5 text-blue-900" aria-hidden="true" />
+          Assign Authority
+        </h2>
+        <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+          <Spinner className="h-4 w-4" />
+          Loading staff list...
+        </div>
+      </Card>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label
-          htmlFor="status-select"
-          className="mb-1.5 block text-sm font-medium text-slate-700"
-        >
-          Change status to
-        </label>
-        <select
-          id="status-select"
-          value={newStatus}
-          onChange={(e) => setNewStatus(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Select a status...</option>
-          {transitions.map((s) => (
-            <option key={s} value={s}>
-              {statusLabel(s)}
-            </option>
-          ))}
-        </select>
-      </div>
+    <Card>
+      <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+        <UserCheck className="h-5 w-5 text-blue-900" aria-hidden="true" />
+        Assign Authority
+      </h2>
 
-      <div>
-        <label
-          htmlFor="status-notes"
-          className="mb-1.5 block text-sm font-medium text-slate-700"
-        >
-          Notes (optional)
-        </label>
-        <textarea
-          id="status-notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={3}
-          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Add context about this change..."
-        />
-      </div>
-
-      {error && (
-        <Alert tone="error">{error}</Alert>
+      {success && (
+        <Alert tone="success" className="mt-4">
+          Complaint assigned successfully.
+        </Alert>
       )}
 
-      <Button type="submit" disabled={!newStatus || submitting} loading={submitting}>
-        {submitting ? 'Updating...' : 'Update Status'}
-      </Button>
-    </form>
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <div>
+          <label
+            htmlFor="assign-staff"
+            className="mb-1.5 block text-sm font-medium text-slate-700"
+          >
+            Select authority
+          </label>
+          <select
+            id="assign-staff"
+            value={assigneeId}
+            onChange={(e) => setAssigneeId(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Choose a staff member...</option>
+            {staff.map((s) => (
+              <option key={s.userId} value={s.userId}>
+                {s.name} — {ROLE_LABELS[s.role] ?? s.role}
+              </option>
+            ))}
+          </select>
+          {staff.length === 0 && (
+            <p className="mt-1 text-xs text-slate-500">
+              No verified staff available at your university.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label
+            htmlFor="assign-notes"
+            className="mb-1.5 block text-sm font-medium text-slate-700"
+          >
+            Notes (optional)
+          </label>
+          <textarea
+            id="assign-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={2}
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Add context for this assignment..."
+          />
+        </div>
+
+        {error && <Alert tone="error">{error}</Alert>}
+
+        <Button type="submit" disabled={!assigneeId || submitting} loading={submitting}>
+          {submitting ? 'Assigning...' : 'Assign Complaint'}
+        </Button>
+      </form>
+    </Card>
   );
 }
 
@@ -287,11 +475,18 @@ export function ComplaintDetail({
   const {
     complaint,
     history,
+    assignments,
     escalations,
     proofOfAction,
+    resolutionEvidence,
+    feedback,
+    evidence,
     identityVisible,
+    evidenceVisible,
     studentName,
     studentAlias,
+    slaDisplay,
+    isAdmin,
   } = detail;
   const priorityMeta =
     PRIORITY_PRESENTATION[complaint.priority as keyof typeof PRIORITY_PRESENTATION];
@@ -399,6 +594,225 @@ export function ComplaintDetail({
         </p>
       </Card>
 
+      {/* Evidence */}
+      <Card>
+        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+          <Paperclip className="h-5 w-5 text-blue-900" aria-hidden="true" />
+          Evidence
+          {evidenceVisible && evidence.length > 0 && (
+            <span className="text-sm font-medium text-slate-400">
+              ({evidence.length})
+            </span>
+          )}
+        </h2>
+        {!evidenceVisible ? (
+          <div className="mt-4 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <EyeOff className="h-5 w-5 text-amber-600" aria-hidden="true" />
+            <p className="text-sm text-amber-800">
+              Evidence is hidden for confidential complaints. Only the assigned handler can view attached files.
+            </p>
+          </div>
+        ) : evidence.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-500">No evidence files attached.</p>
+        ) : (
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {evidence.map((item) => {
+              const isImage = item.fileType.startsWith('image/');
+              return (
+                <li
+                  key={item.id}
+                  className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+                >
+                  <div className="flex h-32 items-center justify-center bg-slate-50">
+                    {isImage && item.url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={item.url}
+                        alt={item.fileName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <FileText className="h-10 w-10 text-slate-300" aria-hidden="true" />
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <p className="truncate text-sm font-semibold text-slate-900">
+                      {item.fileName}
+                    </p>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {formatBytes(item.fileSizeBytes)}
+                    </p>
+                    {item.url ? (
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-blue-900 underline hover:text-blue-800"
+                      >
+                        Open
+                        <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                      </a>
+                    ) : (
+                      <p className="mt-2 text-xs text-amber-600">
+                        Preview unavailable
+                      </p>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Card>
+
+      {/* Assignment Form — admin only, only when not yet assigned */}
+      {isAdmin && !complaint.assigned_to && (
+        <AssignmentForm trackingId={complaint.tracking_id} onAction={refresh} />
+      )}
+
+      {/* Assignment History */}
+      {assignments.length > 0 && (
+        <Card>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <Users className="h-5 w-5 text-blue-900" aria-hidden="true" />
+            Assignment History
+          </h2>
+          <ol className="mt-4 space-y-3">
+            {assignments.map((a) => (
+              <li key={a.id} className="rounded-lg border border-slate-100 p-3">
+                <p className="text-sm text-slate-700">
+                  <span className="font-semibold">Assigned to:</span>{' '}
+                  {a.assignee_name ?? 'Unassigned'}
+                  {a.assigned_by_name && (
+                    <span className="ml-2 text-slate-500">
+                      by {a.assigned_by_name}
+                    </span>
+                  )}
+                </p>
+                {a.notes && (
+                  <p className="mt-1 text-sm text-slate-600">{a.notes}</p>
+                )}
+                <p className="mt-1 text-xs text-slate-400">
+                  {formatComplaintDateTime(a.created_at)}
+                </p>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
+
+      {/* Proof of Action / Resolution */}
+      {proofOfAction && (
+        <Card className="border-green-200 bg-green-50/30">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-green-100 text-green-700">
+              <CheckCircle className="h-5 w-5" aria-hidden="true" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-green-900">
+                Resolution Details
+              </h2>
+              <p className="mt-0.5 text-xs text-green-700">
+                Resolved on {formatComplaintDateTime(proofOfAction.created_at)}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-4">
+            <div>
+              <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                <FileText className="h-4 w-4 text-green-700" aria-hidden="true" />
+                Action Taken
+              </h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
+                {proofOfAction.action_taken}
+              </p>
+            </div>
+
+            {proofOfAction.resolution_explanation && (
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">
+                  Explanation
+                </h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">
+                  {proofOfAction.resolution_explanation}
+                </p>
+              </div>
+            )}
+
+            {resolutionEvidence.length > 0 && (
+              <div>
+                <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                  <Paperclip className="h-4 w-4 text-green-700" aria-hidden="true" />
+                  Resolution Evidence
+                  <span className="text-xs font-normal text-slate-500">
+                    ({resolutionEvidence.length})
+                  </span>
+                </h3>
+                <ul className="mt-2 space-y-1.5">
+                  {resolutionEvidence.map((file) => (
+                    <li key={file.id}>
+                      {file.url ? (
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-sm text-blue-700 underline decoration-blue-300 underline-offset-2 transition hover:text-blue-900"
+                        >
+                          {file.file_name}
+                          <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                        </a>
+                      ) : (
+                        <span className="text-sm text-slate-600">
+                          {file.file_name}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
+
+      {/* Student Feedback */}
+      {feedback && (
+        <Card>
+          <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+            <Star className="h-5 w-5 text-blue-900" aria-hidden="true" />
+            Student Feedback
+          </h2>
+          <div className="mt-4">
+            <div className="flex items-center gap-1">
+              {Array.from({ length: 5 }, (_, i) => (
+                <span
+                  key={i}
+                  className={
+                    i < feedback.rating
+                      ? 'text-amber-500'
+                      : 'text-slate-300'
+                  }
+                >
+                  ★
+                </span>
+              ))}
+              <span className="ml-2 text-sm font-medium text-slate-700">
+                {feedback.rating}/5
+              </span>
+            </div>
+            {feedback.comment && (
+              <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                {feedback.comment}
+              </p>
+            )}
+            <p className="mt-2 text-xs text-slate-400">
+              {formatComplaintDateTime(feedback.created_at)}
+            </p>
+          </div>
+        </Card>
+      )}
+
       {/* Status Timeline */}
       <Card>
         <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
@@ -425,17 +839,17 @@ export function ComplaintDetail({
         </Card>
       )}
 
-      {/* Action Panel — visible only when user can take action */}
+      {/* Escalate Panel — visible only when user can take action */}
       {detail.canTakeAction && (
         <Card>
           <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
             <UserCheck className="h-5 w-5 text-blue-900" aria-hidden="true" />
-            Actions
+            Escalate
           </h2>
           <div className="mt-4">
-            <ActionPanel
+            <EscalatePanel
               trackingId={complaint.tracking_id}
-              currentStatus={complaint.status}
+              slaDisplay={slaDisplay}
               onAction={refresh}
             />
           </div>

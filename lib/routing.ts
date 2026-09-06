@@ -588,25 +588,30 @@ export async function getAssignableStaff(
 
   const { data: profiles } = await admin
     .from('profiles')
-    .select('id, full_name')
+    .select('id, full_name, affiliation_status')
     .in(
       'id',
       staffRows.map((row) => row.user_id)
     );
 
+  const verifiedProfiles = (profiles ?? []).filter(
+    (p) => p.affiliation_status === 'verified'
+  );
   const nameById = new Map(
-    (profiles ?? []).map((p) => [p.id, p.full_name?.trim() || 'Unnamed staff'])
+    verifiedProfiles.map((p) => [p.id, p.full_name?.trim() || 'Unnamed staff'])
   );
 
-  return staffRows.map((row) => {
-    const role = row.roles!.name;
-    return {
-      userId: row.user_id,
-      name: nameById.get(row.user_id) ?? 'Unnamed staff',
-      role,
-      departmentKeys: ROLE_DEPARTMENT_AFFINITY[role] ?? [],
-    };
-  });
+  return staffRows
+    .filter((row) => nameById.has(row.user_id))
+    .map((row) => {
+      const role = row.roles!.name;
+      return {
+        userId: row.user_id,
+        name: nameById.get(row.user_id) ?? 'Unnamed staff',
+        role,
+        departmentKeys: ROLE_DEPARTMENT_AFFINITY[role] ?? [],
+      };
+    });
 }
 
 // ---------------------------------------------------------------------------

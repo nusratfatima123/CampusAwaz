@@ -194,27 +194,17 @@ interface EvidenceDescriptor {
 export async function createComplaint(
   data: CreateComplaintInput & { evidence?: EvidenceDescriptor[] },
   userId: string,
+  profile: { university_id: string | null; affiliation_status: string | null },
   request?: Request
 ): Promise<CreateComplaintResult> {
   const admin = createAdminClient();
 
   // --- Caller must be a verified student of a known university --------------
-  const { data: profile, error: profileError } = await admin
-    .from('profiles')
-    .select('id, university_id, affiliation_status')
-    .eq('id', userId)
-    .maybeSingle();
-
-  if (profileError) {
-    throw new Error('Could not load your profile. Please try again.');
-  }
-  if (!profile) {
-    throw new Error('Profile not found.');
-  }
   if (profile.affiliation_status !== 'verified') {
     throw new Error('Only verified students can submit complaints.');
   }
-  if (!profile.university_id) {
+  const universityId = profile.university_id;
+  if (!universityId) {
     throw new Error('Select your university before submitting a complaint.');
   }
 
@@ -240,7 +230,7 @@ export async function createComplaint(
     throw new Error(`You can attach at most ${MAX_EVIDENCE_FILES} files.`);
   }
 
-  const trackingId = await generateTrackingId(profile.university_id);
+  const trackingId = await generateTrackingId(universityId);
 
   // --- Priority ------------------------------------------------------------
   // Sensitivity sets the floor; the priority the student approved from the AI
@@ -257,7 +247,7 @@ export async function createComplaint(
   // Sprint 3 records the owning department at intake from the routing map; an
   // admin can still override it in the intake queue.
   const departmentId = await resolveDepartmentForCategory(
-    profile.university_id,
+    universityId,
     category.key
   );
 
@@ -267,7 +257,7 @@ export async function createComplaint(
     .insert({
       tracking_id: trackingId,
       student_id: userId,
-      university_id: profile.university_id,
+      university_id: universityId,
       category_id: category.id,
       title: data.title.trim(),
       description: data.description.trim(),
@@ -362,7 +352,7 @@ export async function createComplaint(
   let assignedHandlers: { user_id: string; role: RoleName }[] = [];
 
   if (isSensitive) {
-    assignedHandlers = await resolveSensitiveHandlers(profile.university_id);
+    assignedHandlers = await resolveSensitiveHandlers(universityId);
 
     if (assignedHandlers.length > 0) {
       const { error: accessError } = await admin
@@ -395,7 +385,7 @@ export async function createComplaint(
       });
     } else {
       console.warn(
-        `[complaints] no sensitive handler configured for university ${profile.university_id}; case ${trackingId} left unassigned.`
+        `[complaints] no sensitive handler configured for university ${universityId}; case ${trackingId} left unassigned.`
       );
     }
 

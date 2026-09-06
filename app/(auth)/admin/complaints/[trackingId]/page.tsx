@@ -8,6 +8,13 @@ import { ComplaintDetail } from '@/components/admin/ComplaintDetail';
 import { getAuthContext } from '@/lib/auth';
 import { canUseIntake } from '@/lib/routing';
 import { getComplaintDetail } from '@/lib/complaint-management';
+import { createAdminClient } from '@/lib/supabase/admin';
+import {
+  EVIDENCE_BUCKET,
+  EVIDENCE_SIGNED_URL_TTL_SECONDS,
+  RESOLUTION_EVIDENCE_BUCKET,
+  RESOLUTION_EVIDENCE_SIGNED_URL_TTL_SECONDS,
+} from '@/lib/constants';
 
 export const metadata: Metadata = {
   title: 'Complaint Detail',
@@ -50,6 +57,39 @@ export default async function AdminComplaintDetailPage({
     );
   }
 
+  const admin = createAdminClient();
+
+  const signedEvidence = await Promise.all(
+    detail.evidence.map(async (item) => {
+      const { data } = await admin.storage
+        .from(EVIDENCE_BUCKET)
+        .createSignedUrl(item.storage_path, EVIDENCE_SIGNED_URL_TTL_SECONDS);
+      return {
+        id: item.id,
+        fileName: item.file_name,
+        fileType: item.file_type,
+        fileSizeBytes: item.file_size_bytes,
+        createdAt: item.created_at,
+        url: data?.signedUrl ?? null,
+      };
+    }),
+  );
+
+  const signedResolutionEvidence = await Promise.all(
+    detail.resolutionEvidence.map(async (item) => {
+      const { data } = await admin.storage
+        .from(RESOLUTION_EVIDENCE_BUCKET)
+        .createSignedUrl(item.storage_path, RESOLUTION_EVIDENCE_SIGNED_URL_TTL_SECONDS);
+      return {
+        id: item.id,
+        file_name: item.file_name,
+        file_type: item.file_type,
+        url: data?.signedUrl ?? null,
+        created_at: item.created_at,
+      };
+    }),
+  );
+
   return (
     <div className="container-page py-10 md:py-14">
       <ComplaintDetail
@@ -59,12 +99,17 @@ export default async function AdminComplaintDetailPage({
           assignments: detail.assignments,
           escalations: detail.escalations,
           proofOfAction: detail.proofOfAction,
-          resolutionEvidence: detail.resolutionEvidence,
+          resolutionEvidence: signedResolutionEvidence,
           feedback: detail.feedback,
+          evidence: signedEvidence,
           identityVisible: detail.identityVisible,
+          evidenceVisible: detail.evidenceVisible,
           studentName: detail.studentName,
           studentAlias: detail.studentAlias,
           canTakeAction: detail.canTakeAction,
+          isAdmin: roles.includes('admin'),
+          viewerId: user.id,
+          slaDisplay: detail.slaDisplay,
         }}
       />
     </div>

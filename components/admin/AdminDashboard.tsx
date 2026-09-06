@@ -25,6 +25,7 @@ import { Spinner, LoadingBlock } from '@/components/ui/Spinner';
 import {
   COMPLAINT_STATUS_PRESENTATION,
   PRIORITY_PRESENTATION,
+  PRIVACY_PRESENTATION,
   formatComplaintDate,
   statusLabel,
   statusTone,
@@ -285,6 +286,9 @@ function ComplaintTable({ items }: { items: ComplaintListItem[] }) {
                 Status
               </th>
               <th className="hidden px-4 py-3 font-semibold text-slate-700 md:table-cell">
+                Privacy
+              </th>
+              <th className="hidden px-4 py-3 font-semibold text-slate-700 md:table-cell">
                 Department
               </th>
               <th className="hidden px-4 py-3 font-semibold text-slate-700 lg:table-cell">
@@ -331,6 +335,12 @@ function ComplaintTable({ items }: { items: ComplaintListItem[] }) {
                     <Badge tone={statusTone(item.status)}>
                       {statusLabel(item.status)}
                     </Badge>
+                  </td>
+                  <td className="hidden px-4 py-3 md:table-cell">
+                    {(() => {
+                      const pm = PRIVACY_PRESENTATION[item.privacyMode as keyof typeof PRIVACY_PRESENTATION];
+                      return pm ? <Badge tone={pm.tone}>{pm.label}</Badge> : <span className="text-slate-500">—</span>;
+                    })()}
                   </td>
                   <td className="hidden px-4 py-3 text-slate-600 md:table-cell">
                     {item.departmentName ?? '—'}

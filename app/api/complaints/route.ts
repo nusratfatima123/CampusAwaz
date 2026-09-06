@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import {
   createComplaint,
   getStudentComplaints,
@@ -37,8 +36,7 @@ async function requireVerifiedStudent() {
     return { error: NextResponse.json({ error: 'Not authenticated.' }, { status: 401 }) };
   }
 
-  const admin = createAdminClient();
-  const { data: profile } = await admin
+  const { data: profile } = await supabase
     .from('profiles')
     .select('id, affiliation_status, university_id')
     .eq('id', user.id)
@@ -166,6 +164,7 @@ export async function POST(request: Request) {
         aiPriority: (rawAiPriority as ComplaintPriority) || null,
       },
       user.id,
+      { university_id: guard.profile?.university_id ?? null, affiliation_status: guard.profile?.affiliation_status ?? null },
       request
     );
 

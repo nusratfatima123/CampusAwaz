@@ -429,48 +429,56 @@ export async function getAuthorityDirectory(
 ): Promise<AuthorityDirectoryEntry[]> {
   const admin = createAdminClient();
 
+  const { data: roleRows } = await admin
+    .from('roles')
+    .select('id')
+    .in('name' as any, AUTHORITY_REQUESTABLE_ROLES as any);
+
+  const roleIds = (roleRows ?? []).map((r: { id: string }) => r.id);
+  if (roleIds.length === 0) return [];
+
   const { data, error } = await admin
-    .from('user_roles')
-    .select(`
-      user_id,
-      role_id,
-      university_id,
-      profiles!user_roles_user_id_fkey ( full_name, phone ),
-      roles ( name ),
-      departments ( name )
-    `)
+    .from('authority_requests')
+    .select('user_id, role_id, department_id')
     .eq('university_id', universityId)
-    .in('role_id',
-      (await admin
-        .from('roles')
-        .select('id')
-        .in('name' as any, AUTHORITY_REQUESTABLE_ROLES as any))
-        .data?.map((r) => r.id) ?? []
-    );
+    .in('status', ['approved', 'reinstated'])
+    .in('role_id', roleIds);
 
   if (error) {
     console.error('[authority] directory fetch failed:', error.message);
     return [];
   }
 
-  type RawRow = {
-    user_id: string;
-    role_id: string;
-    university_id: string | null;
-    profiles: { full_name: string | null; phone: string | null } | null;
-    roles: { name: string } | null;
-    departments: { name: string | null } | null;
-  };
+  const rows = (data ?? []) as { user_id: string; role_id: string; department_id: string | null }[];
+  if (rows.length === 0) return [];
 
-  return ((data ?? []) as unknown as RawRow[]).map((row) => ({
-    user_id: row.user_id,
-    full_name: row.profiles?.full_name ?? null,
-    phone: row.profiles?.phone ?? null,
-    role_name: (row.roles?.name ?? 'student') as RoleName,
-    role_label: roleLabel(row.roles?.name ?? 'student'),
-    department_id: null,
-    department_name: row.departments?.name ?? null,
-  }));
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const departmentIds = [...new Set(rows.map((r) => r.department_id).filter((id): id is string => Boolean(id)))];
+
+  const [{ data: profileRows }, { data: allRoles }, { data: deptRows }] = await Promise.all([
+    admin.from('profiles').select('id, full_name, phone').in('id', userIds),
+    admin.from('roles').select('id, name'),
+    departmentIds.length > 0
+      ? admin.from('departments').select('id, name').in('id', departmentIds)
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const profileMap = new Map((profileRows ?? []).map((p) => [p.id, p]));
+  const roleMap = new Map((allRoles ?? []).map((r) => [r.id, r.name]));
+  const deptMap = new Map((deptRows ?? []).map((d) => [d.id, d.name]));
+
+  return rows.map((row) => {
+    const roleName = (roleMap.get(row.role_id) ?? 'student') as RoleName;
+    return {
+      user_id: row.user_id,
+      full_name: profileMap.get(row.user_id)?.full_name ?? null,
+      phone: profileMap.get(row.user_id)?.phone ?? null,
+      role_name: roleName,
+      role_label: roleLabel(roleName),
+      department_id: row.department_id,
+      department_name: row.department_id ? (deptMap.get(row.department_id) ?? null) : null,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
