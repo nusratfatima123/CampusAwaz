@@ -109,12 +109,6 @@ export async function POST(request: Request) {
   // The caller may pass a universityId, but the profile is authoritative — a
   // student can never analyse against another university's routing table.
   const universityId = profileUniversityId;
-  if (!universityId) {
-    return NextResponse.json(
-      { error: 'Select your university before using the assistant.' },
-      { status: 400 }
-    );
-  }
 
   // --- Identity stripping BEFORE storage and BEFORE the provider call -------
   const names = [profileName, userEmail?.split('@')[0] ?? null].filter(
@@ -143,9 +137,12 @@ export async function POST(request: Request) {
   });
 
   // --- Map provider keys onto real rows -----------------------------------
+  // Department resolution requires a university; skip it if not set.
   const [category, department] = await Promise.all([
     getCategoryByKeyForRouting(analysis.category_key),
-    resolveDepartment(universityId, analysis.department_key, analysis.category_key),
+    universityId
+      ? resolveDepartment(universityId, analysis.department_key, analysis.category_key)
+      : Promise.resolve(null),
   ]);
 
   const recommendation = await persistRecommendation({
