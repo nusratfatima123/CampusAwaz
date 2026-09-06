@@ -11,6 +11,10 @@ import {
   Eye,
   AlertTriangle,
   BarChart3,
+  Shield,
+  Flame,
+  CheckCircle,
+  Hash,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -33,10 +37,14 @@ import type { ComplaintStatus } from '@/types/database';
 // ---------------------------------------------------------------------------
 
 export interface DashboardSummary {
+  total: number;
   open: number;
   assigned: number;
   inReview: number;
   escalated: number;
+  resolved: number;
+  highPriority: number;
+  sensitive: number;
   overdue: number;
 }
 
@@ -72,6 +80,12 @@ interface AdminDashboardProps {
 function SummaryCards({ summary }: { summary: DashboardSummary }) {
   const cards = [
     {
+      label: 'Total',
+      value: summary.total,
+      icon: Hash,
+      tone: 'slate' as const,
+    },
+    {
       label: 'Open',
       value: summary.open,
       icon: FileText,
@@ -96,6 +110,24 @@ function SummaryCards({ summary }: { summary: DashboardSummary }) {
       tone: 'danger' as const,
     },
     {
+      label: 'Resolved',
+      value: summary.resolved,
+      icon: CheckCircle,
+      tone: 'green' as const,
+    },
+    {
+      label: 'High Priority',
+      value: summary.highPriority,
+      icon: Flame,
+      tone: 'orange' as const,
+    },
+    {
+      label: 'Sensitive',
+      value: summary.sensitive,
+      icon: Shield,
+      tone: 'rose' as const,
+    },
+    {
       label: 'Overdue',
       value: summary.overdue,
       icon: Clock,
@@ -104,16 +136,20 @@ function SummaryCards({ summary }: { summary: DashboardSummary }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
       {cards.map((card) => (
         <Card key={card.label} className="flex items-center gap-4 p-5">
           <div
             className={cn(
               'flex h-12 w-12 shrink-0 items-center justify-center rounded-xl',
+              card.tone === 'slate' && 'bg-slate-100 text-slate-700',
               card.tone === 'info' && 'bg-blue-100 text-blue-700',
               card.tone === 'purple' && 'bg-purple-100 text-purple-700',
               card.tone === 'warning' && 'bg-amber-100 text-amber-700',
               card.tone === 'danger' && 'bg-red-100 text-red-700',
+              card.tone === 'green' && 'bg-emerald-100 text-emerald-700',
+              card.tone === 'orange' && 'bg-orange-100 text-orange-700',
+              card.tone === 'rose' && 'bg-rose-100 text-rose-700',
             )}
           >
             <card.icon className="h-6 w-6" aria-hidden="true" />

@@ -2,6 +2,7 @@ import { createAdminClient } from './supabase/admin';
 import { audit, AUDIT_EVENTS } from './audit';
 import { createNotification } from './notifications';
 import { SENSITIVE_HANDLER_ROLES, getEvidenceSignedUrls } from './complaints';
+import { getSlaRule } from './escalation';
 import type {
   AiRecommendation,
   Complaint,
@@ -280,6 +281,7 @@ export interface ComplaintDetailResult {
   studentName: string | null;
   studentAlias: string | null;
   canTakeAction: boolean;
+  slaDisplay: { state: 'on_track' | 'approaching' | 'breached'; hoursRemaining: number; responseDeadline: string; responseHours: number } | null;
 }
 
 /**
@@ -424,6 +426,22 @@ export async function getComplaintDetail(
   const canTakeAction =
     roles.includes('admin') || typed.assigned_to === userId;
 
+  // --- SLA display ---------------------------------------------------------
+  let slaDisplay: { state: 'on_track' | 'approaching' | 'breached'; hoursRemaining: number; responseDeadline: string; responseHours: number } | null = null;
+  if (typed.university_id && typed.category_id) {
+    const rule = await getSlaRule(typed.university_id, typed.complaint_categories?.key ?? null, typed.priority as ComplaintPriority);
+    if (rule) {
+      const submittedAt = new Date(typed.submitted_at).getTime();
+      const now = Date.now();
+      const hoursElapsed = (now - submittedAt) / (1000 * 60 * 60);
+      const hoursRemaining = Math.max(0, rule.response_hours - hoursElapsed);
+      const deadline = new Date(submittedAt + rule.response_hours * 60 * 60 * 1000).toISOString();
+      const state: 'on_track' | 'approaching' | 'breached' =
+        hoursRemaining <= 0 ? 'breached' : hoursRemaining <= rule.response_hours * 0.25 ? 'approaching' : 'on_track';
+      slaDisplay = { state, hoursRemaining: Math.round(hoursRemaining * 10) / 10, responseDeadline: deadline, responseHours: rule.response_hours };
+    }
+  }
+
   return {
     complaint: typed,
     evidence: (evidenceResult.data ?? []) as ComplaintEvidence[],
@@ -439,6 +457,7 @@ export async function getComplaintDetail(
     studentName,
     studentAlias,
     canTakeAction,
+    slaDisplay,
   };
 }
 
@@ -684,10 +703,14 @@ export async function changeComplaintStatus(
 // ---------------------------------------------------------------------------
 
 export interface DashboardSummary {
+  total: number;
   open: number;
   assigned: number;
   inReview: number;
   escalated: number;
+  resolved: number;
+  highPriority: number;
+  sensitive: number;
   overdue: number;
 }
 
@@ -707,11 +730,10 @@ export async function getDashboardSummary(
 
   const { data: complaints } = await admin
     .from('complaints')
-    .select('id, status, is_sensitive, updated_at, assigned_to')
-    .eq('university_id', universityId)
-    .neq('status', 'resolved');
+    .select('id, status, priority, is_sensitive, updated_at, assigned_to')
+    .eq('university_id', universityId);
 
-  if (!complaints) return { open: 0, assigned: 0, inReview: 0, escalated: 0, overdue: 0 };
+  if (!complaints) return { total: 0, open: 0, assigned: 0, inReview: 0, escalated: 0, resolved: 0, highPriority: 0, sensitive: 0, overdue: 0 };
 
   const sensitiveIds = complaints.filter((c) => c.is_sensitive).map((c) => c.id);
   let allowedSensitive = new Set<string>();
@@ -739,13 +761,19 @@ export async function getDashboardSummary(
         (c) => c.assigned_to === userId || c.status === 'submitted',
       );
 
+  const total = scoped.length;
   const open = scoped.filter((c) => c.status === 'submitted').length;
   const assigned = scoped.filter((c) => c.status === 'assigned').length;
   const inReview = scoped.filter((c) => c.status === 'in_review').length;
   const escalated = scoped.filter((c) => c.status === 'escalated').length;
+  const resolved = scoped.filter((c) => c.status === 'resolved').length;
+  const highPriority = scoped.filter(
+    (c) => c.priority === 'high' || c.priority === 'critical',
+  ).length;
+  const sensitive = scoped.filter((c) => c.is_sensitive).length;
   const overdue = scoped.filter(
-    (c) => new Date(c.updated_at) < sevenDaysAgo,
+    (c) => c.status !== 'resolved' && new Date(c.updated_at) < sevenDaysAgo,
   ).length;
 
-  return { open, assigned, inReview, escalated, overdue };
+  return { total, open, assigned, inReview, escalated, resolved, highPriority, sensitive, overdue };
 }
