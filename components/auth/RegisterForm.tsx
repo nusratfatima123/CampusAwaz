@@ -56,6 +56,7 @@ export function RegisterForm({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [duplicate, setDuplicate] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Step 1 — details
   const [fullName, setFullName] = useState('');
@@ -212,7 +213,16 @@ export function RegisterForm({
         return;
       }
 
-      router.replace('/login?registered=1');
+      // Email confirmation is required → show success message
+      setFormError(null);
+      setNotice('Check your email to confirm your account before signing in.');
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setFullName('');
+      setUniversity(null);
+      setStudentType(null);
+      setStep(0);
     } catch (err) {
       setFormError(
         err instanceof Error
@@ -235,6 +245,12 @@ export function RegisterForm({
             Sign in instead
           </Link>{' '}
           to continue where you left off.
+        </Alert>
+      ) : null}
+
+      {notice ? (
+        <Alert tone="success" className="mb-6">
+          {notice}
         </Alert>
       ) : null}
 

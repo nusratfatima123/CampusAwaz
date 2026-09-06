@@ -24,6 +24,8 @@ export function LoginForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [resending, setResending] = useState(false);
 
   // Surface messages passed through the query string by the middleware / register.
   useEffect(() => {
@@ -62,11 +64,19 @@ export function LoginForm() {
       });
 
       if (error) {
-        setFormError(
-          error.message.toLowerCase().includes('invalid login')
-            ? 'Incorrect email or password. Please try again.'
-            : error.message
-        );
+        const message = error.message.toLowerCase();
+        if (message.includes('invalid login')) {
+          setFormError('Incorrect email or password. Please try again.');
+          setNeedsConfirmation(false);
+        } else if (message.includes('email not confirmed')) {
+          setFormError(
+            'Please check your email and click the confirmation link before signing in. Check your spam folder if you don\'t see it.'
+          );
+          setNeedsConfirmation(true);
+        } else {
+          setFormError(error.message);
+          setNeedsConfirmation(false);
+        }
         return;
       }
 
@@ -123,12 +133,57 @@ export function LoginForm() {
     }
   }
 
+  async function handleResendConfirmation() {
+    if (!email) {
+      setFormError('Please enter your email address first.');
+      return;
+    }
+
+    setResending(true);
+    setFormError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch('/api/auth/resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setFormError(data.error || 'Could not resend confirmation email.');
+        return;
+      }
+
+      setNotice('Confirmation email sent! Check your inbox and spam folder.');
+      setNeedsConfirmation(false);
+    } catch (err) {
+      setFormError('Could not resend confirmation email. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  }
+
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
       {notice ? <Alert tone="success">{notice}</Alert> : null}
       {formError ? (
         <Alert tone="error" title="Unable to sign in">
-          {formError}
+          <div className="space-y-2">
+            <p>{formError}</p>
+            {needsConfirmation && (
+              <button
+                type="button"
+                onClick={handleResendConfirmation}
+                disabled={resending}
+                className="mt-2 rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {resending ? 'Sending...' : 'Resend confirmation email'}
+              </button>
+            )}
+          </div>
         </Alert>
       ) : null}
 
