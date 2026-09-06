@@ -52,8 +52,8 @@ export async function POST(request: Request) {
 
     userId = user.id;
     userEmail = user.email ?? null;
-    profileName = profile.full_name ?? null;
-    profileUniversityId = profile.university_id ?? null;
+    profileName = profile?.full_name ?? null;
+    profileUniversityId = profile?.university_id ?? null;
   } catch (err) {
     console.error(
       '[ai/analyze] Supabase is not configured:',
