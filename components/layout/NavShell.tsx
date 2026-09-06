@@ -104,12 +104,6 @@ export function NavShell({ user }: { user: NavUser }) {
         ...(user.verified ? [{ label: 'New Complaint', href: '/complaints/new' }] : []),
         ...(user.verified ? [{ label: 'Track', href: '/tracking' }] : []),
         ...(user.verified ? [{ label: 'Support', href: '/support' }] : []),
-        ...(user.verified
-          ? [
-              { label: 'Request Authority', href: '/authority/request' },
-              { label: 'My Requests', href: '/authority/status' },
-            ]
-          : []),
         ...(user.verified ? [] : [{ label: 'Verify', href: '/verify' }]),
         { label: 'Profile', href: '/profile' },
       ];

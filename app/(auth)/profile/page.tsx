@@ -13,9 +13,6 @@ import { Badge } from '@/components/ui/Badge';
 import { getAuthContext, displayName } from '@/lib/auth';
 import { STATUS_PRESENTATION } from '@/lib/verification';
 import { primaryRole, roleLabel } from '@/lib/roles';
-import { getAuthorityRequests } from '@/lib/authority';
-import { createAdminClient } from '@/lib/supabase/admin';
-import type { AuthorityRequestStatus } from '@/types/database';
 
 export const metadata: Metadata = {
   title: 'Your profile',
@@ -56,36 +53,6 @@ export default async function ProfilePage() {
       Icon: ShieldCheck,
     },
   ];
-
-  const STATUS_TONE: Record<AuthorityRequestStatus, 'info' | 'success' | 'warning' | 'neutral' | 'danger'> = {
-    pending: 'warning',
-    approved: 'success',
-    rejected: 'danger',
-    suspended: 'danger',
-    reinstated: 'info',
-  };
-
-  let authorityRequests: { id: string; status: AuthorityRequestStatus; role_name: string; created_at: string }[] = [];
-  if (user) {
-    const [requests] = await Promise.all([
-      getAuthorityRequests({ userId: user.id }),
-    ]);
-    if (requests.length > 0) {
-      const admin = createAdminClient();
-      const roleIds = [...new Set(requests.map((r) => r.role_id))];
-      const { data: roleRows } = await admin
-        .from('roles')
-        .select('id, name')
-        .in('id', roleIds);
-      const roleMap = new Map((roleRows ?? []).map((r: { id: string; name: string }) => [r.id, r.name]));
-      authorityRequests = requests.map((r) => ({
-        id: r.id,
-        status: r.status,
-        role_name: roleLabel((roleMap.get(r.role_id) ?? 'student') as any),
-        created_at: r.created_at,
-      }));
-    }
-  }
 
   return (
     <div className="container-page py-10 md:py-14">
@@ -133,62 +100,6 @@ export default async function ProfilePage() {
             </Link>
           ) : null}
         </Card>
-
-        {user && (
-          <Card className="mt-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">
-                Authority requests
-              </h2>
-              {status === 'verified' && (
-                <Link
-                  href="/authority/request"
-                  className="text-sm font-medium text-blue-900 hover:underline"
-                >
-                  Request authority
-                </Link>
-              )}
-            </div>
-
-            {authorityRequests.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                {status === 'verified'
-                  ? 'You have not requested any authority roles yet.'
-                  : 'Verify your account to request authority roles.'}
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {authorityRequests.map((req) => (
-                  <li
-                    key={req.id}
-                    className="flex items-center justify-between gap-4 py-3"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">
-                        {req.role_name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {new Date(req.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <Badge tone={STATUS_TONE[req.status]}>
-                      {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {authorityRequests.length > 0 && (
-              <Link
-                href="/authority/status"
-                className="mt-4 inline-block text-sm font-medium text-blue-900 hover:underline"
-              >
-                View details
-              </Link>
-            )}
-          </Card>
-        )}
       </div>
     </div>
   );
