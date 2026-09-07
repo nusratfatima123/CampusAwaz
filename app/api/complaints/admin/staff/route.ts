@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { getAssignableStaff, canUseIntake } from '@/lib/routing';
+import { getAssignableStaff, canUseIntake, getDepartments } from '@/lib/routing';
 import type { RoleName } from '@/types/database';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const departmentId = searchParams.get('departmentId');
+
     const supabase = createClient();
     const {
       data: { user },
@@ -34,7 +37,19 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
-    const staff = await getAssignableStaff(profile.university_id);
+    let staff = await getAssignableStaff(profile.university_id);
+
+    if (departmentId) {
+      const departments = await getDepartments(profile.university_id);
+      const dept = departments.find((d) => d.id === departmentId);
+      if (dept) {
+        staff = [...staff].sort((a, b) => {
+          const aMatch = a.departmentKeys.includes(dept.key) ? 0 : 1;
+          const bMatch = b.departmentKeys.includes(dept.key) ? 0 : 1;
+          return aMatch - bMatch;
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, staff });
   } catch (err) {

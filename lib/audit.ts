@@ -51,6 +51,12 @@ export const AUDIT_EVENTS = {
   AUTHORITY_REQUEST_REJECTED: 'authority.request.rejected',
   AUTHORITY_SUSPENDED: 'authority.suspended',
   AUTHORITY_REINSTATED: 'authority.reinstated',
+  // --- Sprint 8 — identity access requests ---
+  IDENTITY_ACCESS_REQUESTED: 'identity_access.requested',
+  IDENTITY_ACCESS_ADMIN_APPROVED: 'identity_access.admin_approved',
+  IDENTITY_ACCESS_ADMIN_DENIED: 'identity_access.admin_denied',
+  IDENTITY_ACCESS_GRANTED: 'identity_access.granted',
+  IDENTITY_ACCESS_DENIED: 'identity_access.denied',
 } as const;
 
 export type AuditEvent = (typeof AUDIT_EVENTS)[keyof typeof AUDIT_EVENTS] | string;

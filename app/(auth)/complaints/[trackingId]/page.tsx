@@ -18,11 +18,13 @@ import { StatusTimeline } from '@/components/complaints/StatusTimeline';
 import { EvidenceGallery } from '@/components/complaints/EvidenceGallery';
 import { ResolutionView } from '@/components/student/ResolutionView';
 import { FeedbackForm } from '@/components/student/FeedbackForm';
+import { IdentityPermissionCard } from '@/components/student/IdentityPermissionCard';
 import { getAuthContext } from '@/lib/auth';
 import { isVerified } from '@/lib/verification';
 import { getComplaintByTrackingId, getEvidenceSignedUrls } from '@/lib/complaints';
 import { getResolutionEvidenceSignedUrls } from '@/lib/resolution';
 import { getFeedbackByTrackingId } from '@/lib/feedback';
+import { getIdentityRequestsForComplaint } from '@/lib/identity-access';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
   PRIVACY_PRESENTATION,
@@ -63,6 +65,16 @@ export default async function ComplaintDetailPage({
 
   const { complaint, history, privacy } = detail;
   const evidence = (await getEvidenceSignedUrls(trackingId, user.id)) ?? [];
+
+  const identityRequests = await getIdentityRequestsForComplaint(
+    (complaint as { id: string }).id,
+  );
+  const actionableRequests = identityRequests.filter(
+    (r) => r.status === 'pending' || r.status === 'admin_approved',
+  );
+  const decidedRequests = identityRequests.filter(
+    (r) => r.status === 'granted' || r.status === 'denied',
+  );
 
   // Sprint 5: fetch resolution data when complaint is resolved.
   let proofOfAction = null;
@@ -183,6 +195,30 @@ export default async function ComplaintDetailPage({
           </Alert>
         ) : null}
       </Card>
+
+      {/* ------------------------------------------- identity access requests */}
+      {actionableRequests.map((req) => (
+        <div key={req.id} className="mt-6">
+          <IdentityPermissionCard
+            requestId={req.id}
+            requestedByRole={req.requested_by_role}
+            reason={req.reason}
+            trackingId={complaint.tracking_id}
+            status={req.status}
+          />
+        </div>
+      ))}
+      {decidedRequests.map((req) => (
+        <div key={req.id} className="mt-6">
+          <IdentityPermissionCard
+            requestId={req.id}
+            requestedByRole={req.requested_by_role}
+            reason={req.reason}
+            trackingId={complaint.tracking_id}
+            status={req.status}
+          />
+        </div>
+      ))}
 
       {/* ---------------------------------------------------- description */}
       <Card className="mt-6">

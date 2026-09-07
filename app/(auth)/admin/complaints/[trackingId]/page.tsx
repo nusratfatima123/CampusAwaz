@@ -110,6 +110,7 @@ export default async function AdminComplaintDetailPage({
           isAdmin: roles.includes('admin'),
           viewerId: user.id,
           slaDisplay: detail.slaDisplay,
+          identityRequests: detail.identityRequests,
         }}
       />
     </div>
