@@ -3,6 +3,7 @@ import { audit, AUDIT_EVENTS } from './audit';
 import { createNotification } from './notifications';
 import { SENSITIVE_HANDLER_ROLES, getEvidenceSignedUrls } from './complaints';
 import { getSlaRule } from './escalation';
+import { STAFF_ROLES } from './roles';
 import type {
   AiRecommendation,
   Complaint,
@@ -678,8 +679,9 @@ export async function assignComplaint(
     );
   }
 
-  const assigneeUni = (assigneeRoles as unknown as { university_id: string | null }[])[0]?.university_id;
-  if (assigneeUni && assigneeUni !== complaint.university_id) {
+  const typed = assigneeRoles as unknown as { roles: { name: RoleName } | null; university_id: string | null }[];
+  const staffUni = typed.find((r) => r.roles?.name && STAFF_ROLES.includes(r.roles.name))?.university_id;
+  if (staffUni && staffUni !== complaint.university_id) {
     throw new Error('The selected user is not at your university.');
   }
 
