@@ -30,6 +30,20 @@ export async function generateTrackingId(
   });
 
   if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes('permission denied') || msg.includes('pg_insufficient_privilege')) {
+      throw new Error(
+        'Tracking ID generation is not permitted. ' +
+        'Run migration 011_fix_complaint_submission.sql in the Supabase SQL editor ' +
+        'to grant the required permissions.'
+      );
+    }
+    if (msg.includes('function') && msg.includes('does not exist')) {
+      throw new Error(
+        'The tracking ID function is missing. ' +
+        'Run migration 002_complaints.sql in the Supabase SQL editor.'
+      );
+    }
     throw new Error(`Could not allocate a tracking ID: ${error.message}`);
   }
 

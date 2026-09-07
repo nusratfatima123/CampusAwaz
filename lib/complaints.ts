@@ -147,6 +147,19 @@ export async function uploadEvidence(
 
   if (error) {
     console.error('[complaints] evidence upload failed:', error.message);
+    const msg = error.message.toLowerCase();
+    if (msg.includes('bucket not found') || msg.includes('not found')) {
+      throw new Error(
+        `The "${EVIDENCE_BUCKET}" storage bucket does not exist. ` +
+        'Run migration 011_fix_complaint_submission.sql in the Supabase SQL editor to create it.'
+      );
+    }
+    if (msg.includes('permission denied') || msg.includes('new row violates row-level security')) {
+      throw new Error(
+        `Storage permission denied for "${EVIDENCE_BUCKET}". ` +
+        'Run migration 011_fix_complaint_submission.sql in the Supabase SQL editor to fix storage policies.'
+      );
+    }
     throw new Error(
       `Could not store "${file.name}". Confirm the "${EVIDENCE_BUCKET}" bucket exists, then try again.`
     );

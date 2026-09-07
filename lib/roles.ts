@@ -10,6 +10,8 @@ export const ROLES = {
   FEMALE_FOCAL_PERSON: 'female_focal_person',
   HOSTEL_WARDEN: 'hostel_warden',
   COUNSELOR: 'counselor',
+  FINANCE_OFFICER: 'finance_officer',
+  ADMIN_OFFICER: 'admin_officer',
 } as const satisfies Record<string, RoleName>;
 
 /** Roles permitted to read audit logs / oversight surfaces. */
@@ -20,6 +22,8 @@ export const STAFF_ROLES: RoleName[] = [
   ROLES.FEMALE_FOCAL_PERSON,
   ROLES.HOSTEL_WARDEN,
   ROLES.COUNSELOR,
+  ROLES.FINANCE_OFFICER,
+  ROLES.ADMIN_OFFICER,
 ];
 
 /** Roles that verified students/graduates can request through the authority workflow. */
@@ -29,6 +33,8 @@ export const AUTHORITY_REQUESTABLE_ROLES: RoleName[] = [
   ROLES.FEMALE_FOCAL_PERSON,
   ROLES.HOSTEL_WARDEN,
   ROLES.COUNSELOR,
+  ROLES.FINANCE_OFFICER,
+  ROLES.ADMIN_OFFICER,
 ];
 
 const ROLE_LABELS: Record<RoleName, string> = {
@@ -40,6 +46,8 @@ const ROLE_LABELS: Record<RoleName, string> = {
   female_focal_person: 'Female Focal Person',
   hostel_warden: 'Hostel Warden',
   counselor: 'Counselor',
+  finance_officer: 'Finance Officer',
+  admin_officer: 'Administration Officer',
 };
 
 export function roleLabel(role: RoleName | string): string {
@@ -63,6 +71,8 @@ export function primaryRole(roles: RoleName[]): RoleName {
     ROLES.FEMALE_FOCAL_PERSON,
     ROLES.COUNSELOR,
     ROLES.HOSTEL_WARDEN,
+    ROLES.FINANCE_OFFICER,
+    ROLES.ADMIN_OFFICER,
     ROLES.GRADUATE,
     ROLES.STUDENT,
   ];

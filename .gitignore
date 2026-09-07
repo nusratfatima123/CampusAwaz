@@ -45,3 +45,20 @@ TEST_CREDENTIALS.md
 # supabase
 .supabase/
 supabase/.temp/
+
+# stray duplicates inside app/ (these belong at root, not inside the Next.js app dir)
+app/.gitignore
+app/_node_modules/
+app/package.json
+app/package-lock.json
+app/tsconfig.json
+app/next.config.js
+app/postcss.config.js
+app/tailwind.config.ts
+app/middleware.ts
+app/supabase/
+app/scripts/
+app/tests/
+app/types/
+app/README.md
+app/.env.local.example

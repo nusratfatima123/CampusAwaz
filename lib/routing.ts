@@ -48,6 +48,8 @@ const ROLE_DEPARTMENT_AFFINITY: Partial<Record<RoleName, DepartmentKey[]>> = {
   female_focal_person: ['safety_proctor'],
   counselor: ['counseling'],
   hostel_warden: ['hostel'],
+  finance_officer: ['finance'],
+  admin_officer: ['administration'],
 };
 
 export function departmentLabel(key: string): string {
@@ -612,6 +614,48 @@ export async function getAssignableStaff(
         departmentKeys: ROLE_DEPARTMENT_AFFINITY[role] ?? [],
       };
     });
+}
+
+/**
+ * Maps a complaint category key to the staff roles best suited to handle it.
+ *
+ * Used by the admin assignment dropdown to show only relevant authorities.
+ */
+const CATEGORY_RELEVANT_ROLES: Partial<Record<string, RoleName[]>> = {
+  academic: ['hod'],
+  facilities: ['hod'],
+  hostel: ['hostel_warden'],
+  financial: ['finance_officer'],
+  administration: ['admin_officer'],
+  safety_harassment: ['female_focal_person', 'proctor', 'counselor'],
+  mental_health: ['counselor'],
+  other: ['hod'],
+};
+
+/**
+ * Filters assignable staff to only those relevant for a given complaint category.
+ *
+ * If no mapping exists for the category, all staff are returned as a safe fallback.
+ * If the category mapping exists but no staff match, falls back to hod to ensure
+ * there's always at least one authority available.
+ */
+export function filterStaffByCategory(
+  staff: AssignableStaff[],
+  categoryKey: string,
+): AssignableStaff[] {
+  const relevantRoles = CATEGORY_RELEVANT_ROLES[categoryKey];
+  if (!relevantRoles) return staff;
+  const filtered = staff.filter((s) => relevantRoles.includes(s.role));
+  // Fallback to hod if no staff match the category-specific roles
+  if (filtered.length === 0) {
+    const hodStaff = staff.filter((s) => s.role === 'hod');
+    // If hod also has no staff, fall back to ALL staff to ensure there's always at least one authority
+    if (hodStaff.length === 0) {
+      return staff;
+    }
+    return hodStaff;
+  }
+  return filtered;
 }
 
 // ---------------------------------------------------------------------------

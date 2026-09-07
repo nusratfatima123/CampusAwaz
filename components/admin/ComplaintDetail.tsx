@@ -23,7 +23,6 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
-import { Spinner } from '@/components/ui/Spinner';
 import { EscalationBanner } from '@/components/admin/EscalationBanner';
 import { ResolutionForm } from '@/components/admin/ResolutionForm';
 import { ReopenControl } from '@/components/admin/ReopenControl';
@@ -37,7 +36,39 @@ import {
 } from '@/lib/complaint-ui';
 import { formatBytes } from '@/lib/validators';
 import { cn } from '@/lib/cn';
+import type { AssignableStaff } from '@/lib/routing';
 import type { ComplaintStatus, SlaDisplay, IdentityAccessRequest } from '@/types/database';
+import type { RoleName } from '@/types/database';
+
+const CATEGORY_RELEVANT_ROLES: Partial<Record<string, RoleName[]>> = {
+  academic: ['hod'],
+  facilities: ['hod'],
+  hostel: ['hostel_warden'],
+  financial: ['finance_officer'],
+  administration: ['admin_officer'],
+  safety_harassment: ['female_focal_person', 'proctor', 'counselor'],
+  mental_health: ['counselor'],
+  other: ['hod'],
+};
+
+function filterStaffByCategory(
+  staff: AssignableStaff[],
+  categoryKey: string,
+): AssignableStaff[] {
+  const relevantRoles = CATEGORY_RELEVANT_ROLES[categoryKey];
+  if (!relevantRoles) return staff;
+  const filtered = staff.filter((s) => relevantRoles.includes(s.role));
+  // Fallback to hod if no staff match the category-specific roles
+  if (filtered.length === 0) {
+    const hodStaff = staff.filter((s) => s.role === 'hod');
+    // If hod also has no staff, fall back to ALL staff to ensure there's always at least one authority
+    if (hodStaff.length === 0) {
+      return staff;
+    }
+    return hodStaff;
+  }
+  return filtered;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -342,49 +373,31 @@ function EscalatePanel({
 // Assignment Form
 // ---------------------------------------------------------------------------
 
-interface AssignableStaffOption {
-  userId: string;
-  name: string;
-  role: string;
-  departmentKeys: string[];
-}
-
 const ROLE_LABELS: Record<string, string> = {
   hod: 'HOD',
   proctor: 'Proctor',
   female_focal_person: 'Female Focal Person',
   hostel_warden: 'Hostel Warden',
   counselor: 'Counselor',
+  finance_officer: 'Finance Officer',
+  admin_officer: 'Administration Officer',
   admin: 'Admin',
 };
 
 function AssignmentForm({
   trackingId,
-  departmentId,
+  staff,
   onAction,
 }: {
   trackingId: string;
-  departmentId?: string | null;
+  staff: AssignableStaff[];
   onAction: () => void;
 }) {
-  const [staff, setStaff] = useState<AssignableStaffOption[]>([]);
   const [assigneeId, setAssigneeId] = useState('');
   const [notes, setNotes] = useState('');
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  useState(() => {
-    const params = departmentId ? `?departmentId=${encodeURIComponent(departmentId)}` : '';
-    fetch(`/api/complaints/admin/staff${params}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success) setStaff(json.staff);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -412,21 +425,6 @@ function AssignmentForm({
     } finally {
       setSubmitting(false);
     }
-  }
-
-  if (loading) {
-    return (
-      <Card>
-        <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-          <UserCheck className="h-5 w-5 text-blue-900" aria-hidden="true" />
-          Assign Authority
-        </h2>
-        <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
-          <Spinner className="h-4 w-4" />
-          Loading staff list...
-        </div>
-      </Card>
-    );
   }
 
   return (
@@ -728,8 +726,12 @@ function IdentityAccessPanel({
 
 export function ComplaintDetail({
   detail,
+  staff = [],
+  assignedTo = null,
 }: {
   detail: ComplaintDetailData;
+  staff?: AssignableStaff[];
+  assignedTo?: string | null;
 }) {
   const router = useRouter();
   const {
@@ -936,10 +938,39 @@ export function ComplaintDetail({
         )}
       </Card>
 
-      {/* Assignment Form — admin only, only when not yet assigned */}
-      {isAdmin && !complaint.assigned_to && (
-        <AssignmentForm trackingId={complaint.tracking_id} departmentId={complaint.department_id} onAction={refresh} />
-      )}
+      {/* Assignment Form — admin only, category-filtered */}
+      {isAdmin && (() => {
+        const filteredStaff = filterStaffByCategory(
+          staff,
+          complaint.complaint_categories?.key ?? 'other',
+        );
+        return (
+          <Card>
+            <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+              <UserCheck className="h-5 w-5 text-blue-900" aria-hidden="true" />
+              Assign Authority
+            </h2>
+            {(assignedTo ?? complaint.assigned_to) && (
+              <Alert tone="info" className="mt-4">
+                Currently assigned to a staff member. Reassigning will update the assignment record.
+              </Alert>
+            )}
+            <div className="mt-4">
+              {filteredStaff.length === 0 ? (
+                <Alert tone="warning">
+                  No staff members with the relevant authority role are available for this complaint category.
+                </Alert>
+              ) : (
+                <AssignmentForm
+                  trackingId={complaint.tracking_id}
+                  staff={filteredStaff}
+                  onAction={refresh}
+                />
+              )}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* Assignment History */}
       {assignments.length > 0 && (

@@ -782,7 +782,9 @@ export function ComplaintDetail({
       </Card>
 
       {/* Assignment — admin can assign, everyone with access can see history */}
-      {isAdmin && (
+      {isAdmin && (() => {
+        const filteredStaff = filterStaffByCategory(staff, complaint.complaint_categories?.key ?? 'other');
+        return (
         <Card>
           <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
             <UserPlus className="h-5 w-5 text-blue-900" aria-hidden="true" />
@@ -794,14 +796,21 @@ export function ComplaintDetail({
             </Alert>
           )}
           <div className="mt-4">
-            <AssignmentForm
-              trackingId={complaint.tracking_id}
-              staff={filterStaffByCategory(staff, complaint.complaint_categories?.key ?? 'other')}
-              onAction={refresh}
-            />
+            {filteredStaff.length === 0 ? (
+              <Alert tone="warning">
+                No staff members with the relevant authority role are available for this complaint category.
+              </Alert>
+            ) : (
+              <AssignmentForm
+                trackingId={complaint.tracking_id}
+                staff={filteredStaff}
+                onAction={refresh}
+              />
+            )}
           </div>
         </Card>
-      )}
+        );
+      })()}
 
       {/* Assignment History */}
       <Card>

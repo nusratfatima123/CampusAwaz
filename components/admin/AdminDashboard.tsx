@@ -31,7 +31,7 @@ import {
   statusTone,
 } from '@/lib/complaint-ui';
 import { cn } from '@/lib/cn';
-import { SlaDot } from '@/app/components/admin/SlaIndicator';
+import { SlaDot } from '@/components/admin/SlaIndicator';
 import type { ComplaintStatus } from '@/types/database';
 
 // ---------------------------------------------------------------------------

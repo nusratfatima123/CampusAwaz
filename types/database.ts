@@ -35,7 +35,9 @@ export type RoleName =
   | 'proctor'
   | 'female_focal_person'
   | 'hostel_warden'
-  | 'counselor';
+  | 'counselor'
+  | 'finance_officer'
+  | 'admin_officer';
 
 export type University = {
   id: string;

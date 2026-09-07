@@ -6,7 +6,7 @@ import { Alert } from '@/components/ui/Alert';
 import { ButtonLink } from '@/components/ui/Button';
 import { ComplaintDetail } from '@/components/admin/ComplaintDetail';
 import { getAuthContext } from '@/lib/auth';
-import { canUseIntake } from '@/lib/routing';
+import { canUseIntake, getAssignableStaff } from '@/lib/routing';
 import { getComplaintDetail } from '@/lib/complaint-management';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
@@ -90,6 +90,10 @@ export default async function AdminComplaintDetailPage({
     }),
   );
 
+  const staff = profile?.university_id
+    ? await getAssignableStaff(profile.university_id)
+    : [];
+
   return (
     <div className="container-page py-10 md:py-14">
       <ComplaintDetail
@@ -112,6 +116,7 @@ export default async function AdminComplaintDetailPage({
           slaDisplay: detail.slaDisplay,
           identityRequests: detail.identityRequests,
         }}
+        staff={staff}
       />
     </div>
   );

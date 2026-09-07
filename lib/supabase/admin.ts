@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/database';
 
@@ -26,31 +27,27 @@ export function createAdminClient() {
   }
 
   if (serviceKey === anonKey) {
+    // Fallback: use createServerClient to properly handle the authenticated session
     try {
       const cookieStore = cookies();
-      const projectRef = new URL(url).hostname.split('.')[0];
-      const raw = cookieStore.get(`sb-${projectRef}-auth-token`)?.value;
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const access_token =
-          parsed?.access_token ?? parsed?.session?.access_token;
-        if (access_token) {
-          return createSupabaseClient<Database>(url, anonKey, {
-            auth: {
-              autoRefreshToken: false,
-              persistSession: false,
-              detectSessionInUrl: false,
-            },
-            global: {
-              headers: {
-                Authorization: `Bearer ${access_token}`,
-              },
-            },
-          });
-        }
-      }
+      return createServerClient<Database>(url, anonKey, {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) => {
+                cookieStore.set(name, value, options);
+              });
+            } catch {
+              // Called from a Server Component — the cookie store is read-only.
+            }
+          },
+        },
+      });
     } catch {
-      // cookies unavailable or token unparseable — fall through
+      // cookies unavailable — fall through to service client
     }
   }
 
