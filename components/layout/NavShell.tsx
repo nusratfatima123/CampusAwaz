@@ -21,7 +21,7 @@ export interface NavUser {
 
 /** Role-aware application navbar for authenticated areas. */
 export function NavShell({ user }: { user: NavUser }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);

@@ -410,7 +410,7 @@ async function getRoleId(roleName: string): Promise<string | null> {
   const { data } = await admin
     .from('roles')
     .select('id')
-    .eq('name', roleName)
+    .eq('name', roleName as never)
     .maybeSingle();
   return (data as { id: string } | null)?.id ?? null;
 }

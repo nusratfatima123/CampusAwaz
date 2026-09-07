@@ -55,6 +55,13 @@ export async function POST(
       );
     }
 
+    // Fetch the complaint before status change so we know its id and assignment.
+    const { data: complaintRow } = await admin
+      .from('complaints')
+      .select('id, assigned_to')
+      .eq('tracking_id', trackingId.trim().toUpperCase())
+      .maybeSingle();
+
     await changeComplaintStatus(
       {
         trackingId,
@@ -64,6 +71,22 @@ export async function POST(
       },
       request,
     );
+
+    // Clear assignment so the complaint must be re-assigned, and insert an
+    // unassignment event. The new row restarts the SLA clock from now.
+    if (complaintRow) {
+      await admin
+        .from('complaints')
+        .update({ assigned_to: null })
+        .eq('id', complaintRow.id);
+
+      await admin.from('complaint_assignments').insert({
+        complaint_id: complaintRow.id,
+        assigned_to: null,
+        assigned_by: user.id,
+        notes: 'Cleared on reopen — requires re-assignment.',
+      });
+    }
 
     await audit(AUDIT_EVENTS.COMPLAINT_REOPENED, {
       userId: user.id,

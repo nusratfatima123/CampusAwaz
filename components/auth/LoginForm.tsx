@@ -29,8 +29,8 @@ export function LoginForm() {
 
   // Surface messages passed through the query string by the middleware / register.
   useEffect(() => {
-    const error = searchParams.get('error');
-    const registered = searchParams.get('registered');
+    const error = searchParams?.get('error');
+    const registered = searchParams?.get('registered');
 
     if (error === 'not_configured') {
       setFormError(
@@ -101,7 +101,7 @@ export function LoginForm() {
                 .eq('id', retry.data.user.id)
                 .maybeSingle();
 
-              const nextParam = searchParams.get('next');
+              const nextParam = searchParams?.get('next');
               const verified = profileData?.affiliation_status === 'verified';
 
               const STAFF_ROLES = [
@@ -177,7 +177,7 @@ export function LoginForm() {
         .eq('id', data.user.id)
         .maybeSingle();
 
-      const nextParam = searchParams.get('next');
+      const nextParam = searchParams?.get('next');
       const verified = profile?.affiliation_status === 'verified';
 
       // Staff users go to admin dashboard; students go to regular dashboard.
