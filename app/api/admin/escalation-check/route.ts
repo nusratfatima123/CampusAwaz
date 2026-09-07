@@ -39,6 +39,7 @@ export async function POST() {
 
     const result = await runSlaEscalationScan(
       (profile as { university_id: string }).university_id,
+      user.id,
     );
 
     return NextResponse.json({

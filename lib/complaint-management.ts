@@ -22,6 +22,7 @@ import type {
   ProofOfAction,
   ResolutionEvidence,
   RoleName,
+  SlaState,
 } from '@/types/database';
 
 /**
@@ -78,6 +79,7 @@ export interface ComplaintListItem {
   assignedToName: string | null;
   studentName: string | null;
   studentAlias: string | null;
+  slaState: SlaState | null;
 }
 
 export interface ComplaintListFilters {
@@ -113,7 +115,7 @@ export async function getComplaintList(
   let query = admin
     .from('complaints')
     .select(
-      'id, tracking_id, student_id, title, status, priority, privacy_mode, is_sensitive, submitted_at, updated_at, department_id, assigned_to, complaint_categories ( key, label )',
+      'id, tracking_id, student_id, title, status, priority, privacy_mode, is_sensitive, submitted_at, updated_at, department_id, assigned_to, category_id, complaint_categories ( key, label )',
       { count: 'exact' },
     )
     .eq('university_id', filters.universityId)
@@ -180,6 +182,100 @@ export async function getComplaintList(
     filtered = filtered.filter(
       (r) => r.complaint_categories?.key === filters.categoryKey,
     );
+  }
+
+  // Compute SLA state for open complaints.
+  const slaStates = new Map<string, SlaState>();
+  const slaEligible = filtered.filter(
+    (r) => r.status !== 'resolved' && r.status !== 'submitted',
+  );
+
+  if (slaEligible.length > 0) {
+    const eligibleIds = slaEligible.map((r) => r.id);
+    const categoryIds = [
+      ...new Set(slaEligible.map((r) => r.category_id).filter(Boolean)),
+    ] as string[];
+
+    const [catRes, assignRes, slaRes] = await Promise.all([
+      categoryIds.length > 0
+        ? admin
+            .from('complaint_categories')
+            .select('id, key')
+            .in('id', categoryIds)
+        : Promise.resolve({ data: [] }),
+      admin
+        .from('complaint_assignments')
+        .select('complaint_id, created_at')
+        .in('complaint_id', eligibleIds)
+        .order('created_at', { ascending: false }),
+      admin
+        .from('sla_rules')
+        .select('category_key, priority, response_hours')
+        .eq('university_id', filters.universityId)
+        .eq('is_active', true),
+    ]);
+
+    const catKeyById = new Map<string, string>(
+      ((catRes.data ?? []) as { id: string; key: string }[]).map((r) => [
+        r.id,
+        r.key,
+      ]),
+    );
+
+    const latestAssignment = new Map<string, string>();
+    for (const row of (assignRes.data ?? []) as {
+      complaint_id: string;
+      created_at: string;
+    }[]) {
+      if (!latestAssignment.has(row.complaint_id)) {
+        latestAssignment.set(row.complaint_id, row.created_at);
+      }
+    }
+
+    const slaRules = (slaRes.data ?? []) as {
+      category_key: string;
+      priority: string;
+      response_hours: number;
+    }[];
+    const slaByKey = new Map<string, number>();
+    const slaByPriority = new Map<string, number>();
+    for (const r of slaRules) {
+      slaByKey.set(`${r.category_key}|${r.priority}`, r.response_hours);
+      if (!slaByPriority.has(r.priority)) {
+        slaByPriority.set(r.priority, r.response_hours);
+      }
+    }
+
+    const now = Date.now();
+    for (const c of slaEligible) {
+      const catKey = c.category_id
+        ? catKeyById.get(c.category_id) ?? null
+        : null;
+      const responseHours =
+        (catKey ? slaByKey.get(`${catKey}|${c.priority}`) : undefined) ??
+        slaByPriority.get(c.priority) ??
+        null;
+      if (!responseHours) continue;
+
+      const assignedAt = latestAssignment.get(c.id);
+      const clockStart = assignedAt
+        ? new Date(assignedAt).getTime()
+        : new Date(c.submitted_at).getTime();
+      const hoursElapsed = (now - clockStart) / (1000 * 60 * 60);
+      const rawRemaining = responseHours - hoursElapsed;
+
+      let state: SlaState;
+      if (rawRemaining > responseHours * 0.25) {
+        state = 'on_track';
+      } else if (rawRemaining > 0) {
+        state = 'approaching';
+      } else if (rawRemaining > -responseHours) {
+        state = 'overdue';
+      } else {
+        state = 'breached';
+      }
+      slaStates.set(c.id, state);
+    }
   }
 
   // Fetch department names and assignee names for visible complaints.
@@ -257,6 +353,7 @@ export async function getComplaintList(
         ? null
         : (privacy?.anonymous_alias ??
           (r.privacy_mode === 'anonymous' ? 'Anonymous reporter' : 'Confidential reporter')),
+      slaState: slaStates.get(r.id) ?? null,
     };
   });
 

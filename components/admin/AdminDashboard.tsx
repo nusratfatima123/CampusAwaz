@@ -31,6 +31,7 @@ import {
   statusTone,
 } from '@/lib/complaint-ui';
 import { cn } from '@/lib/cn';
+import { SlaDot } from '@/app/components/admin/SlaIndicator';
 import type { ComplaintStatus } from '@/types/database';
 
 // ---------------------------------------------------------------------------
@@ -66,6 +67,7 @@ export interface ComplaintListItem {
   assignedToName: string | null;
   studentName: string | null;
   studentAlias: string | null;
+  slaState: string | null;
 }
 
 interface AdminDashboardProps {
@@ -285,6 +287,9 @@ function ComplaintTable({ items }: { items: ComplaintListItem[] }) {
               <th className="px-4 py-3 font-semibold text-slate-700">
                 Status
               </th>
+              <th className="px-4 py-3 font-semibold text-slate-700">
+                <span className="sr-only">SLA</span>
+              </th>
               <th className="hidden px-4 py-3 font-semibold text-slate-700 md:table-cell">
                 Privacy
               </th>
@@ -336,6 +341,9 @@ function ComplaintTable({ items }: { items: ComplaintListItem[] }) {
                       {statusLabel(item.status)}
                     </Badge>
                   </td>
+                  <td className="px-4 py-3">
+                    <SlaDot state={item.slaState} />
+                  </td>
                   <td className="hidden px-4 py-3 md:table-cell">
                     {(() => {
                       const pm = PRIVACY_PRESENTATION[item.privacyMode as keyof typeof PRIVACY_PRESENTATION];
@@ -383,6 +391,8 @@ export function AdminDashboard({
   const [summary, setSummary] = useState(initialSummary);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [slaChecking, setSlaChecking] = useState(false);
+  const [slaResult, setSlaResult] = useState<{ scanned: number; escalated: number } | null>(null);
 
   const fetchComplaints = useCallback(
     async (filters: Record<string, string> = {}) => {
@@ -406,11 +416,36 @@ export function AdminDashboard({
     [initialSummary],
   );
 
+  async function runSlaCheck() {
+    setSlaChecking(true);
+    setSlaResult(null);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/escalation-check', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'SLA check failed');
+      setSlaResult({ scanned: json.scanned, escalated: json.escalated });
+      await fetchComplaints();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'SLA check failed.');
+    } finally {
+      setSlaChecking(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <SummaryCards summary={summary} />
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={runSlaCheck}
+          disabled={slaChecking}
+        >
+          {slaChecking ? 'Checking...' : 'Run SLA Check'}
+        </Button>
         <Link
           href="/admin/analytics"
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-blue-900 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
@@ -419,6 +454,15 @@ export function AdminDashboard({
           View Analytics
         </Link>
       </div>
+
+      {slaResult && (
+        <Alert tone="info" title="SLA Check Complete">
+          Scanned {slaResult.scanned} complaint{slaResult.scanned !== 1 ? 's' : ''}
+          {slaResult.escalated > 0
+            ? ` — escalated ${slaResult.escalated}`
+            : ' — no new escalations'}
+        </Alert>
+      )}
 
       <FilterBar onFilter={fetchComplaints} />
 

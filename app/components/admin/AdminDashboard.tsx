@@ -226,6 +226,7 @@ function FilterBar({
             <option value="">All</option>
             <option value="on_track">On Track</option>
             <option value="approaching">Approaching</option>
+            <option value="overdue">Overdue</option>
             <option value="breached">Breached</option>
           </select>
         </div>
@@ -394,6 +395,8 @@ export function AdminDashboard({
   const [summary, setSummary] = useState(initialSummary);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [slaChecking, setSlaChecking] = useState(false);
+  const [slaResult, setSlaResult] = useState<{ scanned: number; escalated: number } | null>(null);
 
   const fetchComplaints = useCallback(
     async (filters: Record<string, string> = {}) => {
@@ -417,11 +420,36 @@ export function AdminDashboard({
     [initialSummary],
   );
 
+  async function runSlaCheck() {
+    setSlaChecking(true);
+    setSlaResult(null);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/escalation-check', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'SLA check failed');
+      setSlaResult({ scanned: json.scanned, escalated: json.escalated });
+      await fetchComplaints();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'SLA check failed.');
+    } finally {
+      setSlaChecking(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <SummaryCards summary={summary} />
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={runSlaCheck}
+          disabled={slaChecking}
+        >
+          {slaChecking ? 'Checking...' : 'Run SLA Check'}
+        </Button>
         <Link
           href="/admin/analytics"
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-blue-900 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
@@ -430,6 +458,15 @@ export function AdminDashboard({
           View Analytics
         </Link>
       </div>
+
+      {slaResult && (
+        <Alert tone="info" title="SLA Check Complete">
+          Scanned {slaResult.scanned} complaint{slaResult.scanned !== 1 ? 's' : ''}
+          {slaResult.escalated > 0
+            ? ` — escalated ${slaResult.escalated}`
+            : ' — no new escalations'}
+        </Alert>
+      )}
 
       <FilterBar onFilter={fetchComplaints} />
 

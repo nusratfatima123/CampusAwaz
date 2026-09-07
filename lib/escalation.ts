@@ -301,6 +301,7 @@ export async function escalateComplaint(
  */
 export async function runSlaEscalationScan(
   universityId: string,
+  actorId: string,
 ): Promise<{ scanned: number; escalated: number }> {
   const admin = createAdminClient();
 
@@ -362,7 +363,7 @@ export async function runSlaEscalationScan(
           trackingId: complaint.tracking_id,
           reason: `SLA breach detected — complaint exceeded the configured response window for ${complaint.priority} priority.`,
           actor: {
-            userId: complaint.assigned_to ?? complaint.student_id,
+            userId: actorId,
             roles: ['admin'],
             universityId,
           },
