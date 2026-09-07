@@ -173,6 +173,38 @@ export const SENSITIVE_SLA_HOURS: Record<string, number> = {
 /** Maximum escalation levels before the system stops auto-escalating. */
 export const MAX_ESCALATION_LEVEL = 3;
 
+/** Priority labels for SLA display. */
+export const SLA_PRIORITY_LABELS: Record<string, string> = {
+  critical: 'Critical',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+};
+
+/** SLA response hours by category and priority — mirrors the seeded sla_rules. */
+export const SLA_REFERENCE_TABLE: Record<string, Record<string, number>> = {
+  academic: { ...DEFAULT_SLA_HOURS },
+  facilities: { ...DEFAULT_SLA_HOURS },
+  hostel: { ...DEFAULT_SLA_HOURS },
+  financial: { ...DEFAULT_SLA_HOURS },
+  administration: { ...DEFAULT_SLA_HOURS },
+  safety_harassment: { ...SENSITIVE_SLA_HOURS },
+  mental_health: { ...DEFAULT_SLA_HOURS },
+  other: { ...DEFAULT_SLA_HOURS },
+};
+
+/** Responsible authority for each complaint category. */
+export const CATEGORY_AUTHORITY_LABELS: Record<string, string> = {
+  academic: 'Dean — Academic Affairs',
+  facilities: 'Director — Facilities',
+  hostel: 'Chief Warden',
+  financial: 'Director — Finance',
+  administration: 'Central Administration',
+  safety_harassment: 'Proctorial & Safety Office',
+  mental_health: 'Counseling & Wellbeing',
+  other: 'Central Administration',
+};
+
 /** Storage bucket for resolution evidence files. */
 export const RESOLUTION_EVIDENCE_BUCKET = 'resolution-evidence';
 

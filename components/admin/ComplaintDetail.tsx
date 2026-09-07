@@ -76,6 +76,7 @@ export interface ComplaintDetailData {
     submitted_at: string;
     updated_at: string;
     assigned_to: string | null;
+    department_id: string | null;
     complaint_categories: { key: string; label: string } | null;
   };
   history: StatusHistoryEntry[];
@@ -183,13 +184,27 @@ function StatusTimeline({ history }: { history: StatusHistoryEntry[] }) {
 // Escalate Panel
 // ---------------------------------------------------------------------------
 
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
 function EscalatePanel({
   trackingId,
   slaDisplay,
+  assignedAt,
   onAction,
 }: {
   trackingId: string;
   slaDisplay: SlaDisplay | null | undefined;
+  assignedAt?: string | null;
   onAction: () => void;
 }) {
   const [reason, setReason] = useState('');
@@ -201,9 +216,9 @@ function EscalatePanel({
   const hoursRemaining = slaDisplay?.hoursRemaining ?? null;
   const responseHours = slaDisplay?.responseHours ?? null;
 
-  const slaIcon = slaState === 'breached' ? AlertTriangle : slaState === 'approaching' ? Timer : CheckCircle;
+  const slaIcon = slaState === 'breached' || slaState === 'overdue' ? AlertTriangle : slaState === 'approaching' ? Timer : CheckCircle;
   const SlaIcon = slaIcon;
-  const slaTone = slaState === 'breached' ? 'error' : slaState === 'approaching' ? 'warning' : 'success';
+  const slaTone = slaState === 'breached' ? 'error' : slaState === 'overdue' ? 'error' : slaState === 'approaching' ? 'warning' : 'success';
 
   async function handleEscalate(e: React.FormEvent) {
     e.preventDefault();
@@ -238,6 +253,7 @@ function EscalatePanel({
         <div className={cn(
           'rounded-xl border p-4',
           slaState === 'breached' ? 'border-red-200 bg-red-50' :
+          slaState === 'overdue' ? 'border-orange-200 bg-orange-50' :
           slaState === 'approaching' ? 'border-amber-200 bg-amber-50' :
           'border-green-200 bg-green-50'
         )}>
@@ -245,30 +261,45 @@ function EscalatePanel({
             <SlaIcon className={cn(
               'h-5 w-5',
               slaState === 'breached' ? 'text-red-600' :
+              slaState === 'overdue' ? 'text-orange-600' :
               slaState === 'approaching' ? 'text-amber-600' :
               'text-green-600'
             )} aria-hidden="true" />
             <span className={cn(
               'text-sm font-semibold',
               slaState === 'breached' ? 'text-red-800' :
+              slaState === 'overdue' ? 'text-orange-800' :
               slaState === 'approaching' ? 'text-amber-800' :
               'text-green-800'
             )}>
-              SLA {slaState === 'breached' ? 'Breached' : slaState === 'approaching' ? 'Approaching Deadline' : 'On Track'}
+              {slaState === 'breached' ? 'SLA Breached' :
+               slaState === 'overdue' ? 'Overdue' :
+               slaState === 'approaching' ? 'Approaching Deadline' :
+               'On Track'}
             </span>
           </div>
           <div className="mt-2 space-y-1 text-sm text-slate-700">
             <p>
-              <span className="font-medium">Response window:</span> {responseHours} hours
+              <span className="font-medium">SLA:</span> {responseHours} hours
             </p>
+            {assignedAt && (
+              <p>
+                <span className="font-medium">Assigned:</span> {formatDateTime(assignedAt)}
+              </p>
+            )}
+            {slaDisplay?.responseDeadline && (
+              <p>
+                <span className="font-medium">Deadline:</span> {formatDateTime(slaDisplay.responseDeadline)}
+              </p>
+            )}
             {hoursRemaining !== null && (
               <p>
                 <span className="font-medium">
-                  {slaState === 'breached' ? 'Overdue by:' : 'Time remaining:'}
+                  {slaState === 'breached' || slaState === 'overdue' ? 'Overdue by:' : 'Remaining:'}
                 </span>{' '}
-                {slaState === 'breached'
+                {slaState === 'breached' || slaState === 'overdue'
                   ? `${Math.abs(hoursRemaining)} hours overdue`
-                  : `${hoursRemaining} hours remaining`}
+                  : `${hoursRemaining} hours`}
               </p>
             )}
           </div>
@@ -315,6 +346,7 @@ interface AssignableStaffOption {
   userId: string;
   name: string;
   role: string;
+  departmentKeys: string[];
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -328,9 +360,11 @@ const ROLE_LABELS: Record<string, string> = {
 
 function AssignmentForm({
   trackingId,
+  departmentId,
   onAction,
 }: {
   trackingId: string;
+  departmentId?: string | null;
   onAction: () => void;
 }) {
   const [staff, setStaff] = useState<AssignableStaffOption[]>([]);
@@ -342,7 +376,8 @@ function AssignmentForm({
   const [success, setSuccess] = useState(false);
 
   useState(() => {
-    fetch('/api/complaints/admin/staff')
+    const params = departmentId ? `?departmentId=${encodeURIComponent(departmentId)}` : '';
+    fetch(`/api/complaints/admin/staff${params}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success) setStaff(json.staff);
@@ -463,6 +498,231 @@ function AssignmentForm({
 }
 
 // ---------------------------------------------------------------------------
+// Identity Access Panel
+// ---------------------------------------------------------------------------
+
+function identityStatusLabel(status: string): { label: string; tone: 'neutral' | 'info' | 'warning' | 'success' | 'danger' | 'purple' } {
+  switch (status) {
+    case 'pending':
+      return { label: 'Pending admin review', tone: 'warning' };
+    case 'admin_approved':
+      return { label: 'Awaiting student decision', tone: 'info' };
+    case 'admin_denied':
+      return { label: 'Denied by admin', tone: 'danger' };
+    case 'granted':
+      return { label: 'Granted by student', tone: 'success' };
+    case 'denied':
+      return { label: 'Denied by student', tone: 'danger' };
+    case 'expired':
+      return { label: 'Expired', tone: 'neutral' };
+    default:
+      return { label: status, tone: 'neutral' };
+  }
+}
+
+function IdentityAccessPanel({
+  complaintId,
+  isAdmin,
+  requests,
+  onAction,
+}: {
+  complaintId: string;
+  isAdmin: boolean;
+  requests: IdentityAccessRequest[];
+  onAction: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notes, setNotes] = useState('');
+  const [reason, setReason] = useState('');
+
+  const activeRequest = requests.find(
+    (r) => r.status === 'pending' || r.status === 'admin_approved',
+  );
+  const latestRequest = requests[0];
+
+  async function handleRequest() {
+    if (reason.trim().length < 10) {
+      setError('Please provide a reason of at least 10 characters.');
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/complaints/identity-access/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ complaintId, reason: reason.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Failed to create request');
+      setReason('');
+      onAction();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create request.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleAdminDecision(action: 'approve' | 'deny') {
+    if (!activeRequest) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(
+        `/api/complaints/identity-access/${activeRequest.id}/admin-decision`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, notes: notes.trim() || undefined }),
+        },
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? 'Failed to process decision');
+      setNotes('');
+      onAction();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not process decision.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
+        <Shield className="h-5 w-5 text-blue-900" aria-hidden="true" />
+        Identity Access
+      </h2>
+
+      <div className="mt-4 space-y-4">
+        {latestRequest && (
+          <div className="rounded-lg border border-slate-100 p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-700">
+                <span className="font-medium">Latest request:</span>{' '}
+                {formatComplaintDateTime(latestRequest.created_at)}
+              </p>
+              <Badge tone={identityStatusLabel(latestRequest.status).tone}>
+                {identityStatusLabel(latestRequest.status).label}
+              </Badge>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Requested by role: {latestRequest.requested_by_role}
+            </p>
+            {latestRequest.reason && (
+              <p className="mt-1 text-xs text-slate-700">
+                <span className="font-medium">Reason:</span> {latestRequest.reason}
+              </p>
+            )}
+            {latestRequest.admin_notes && (
+              <p className="mt-1 text-xs text-slate-500">
+                Admin notes: {latestRequest.admin_notes}
+              </p>
+            )}
+            {latestRequest.student_notes && (
+              <p className="mt-1 text-xs text-slate-500">
+                Student notes: {latestRequest.student_notes}
+              </p>
+            )}
+          </div>
+        )}
+
+        {error && <Alert tone="error">{error}</Alert>}
+
+        {/* Admin actions — approve/deny pending requests */}
+        {isAdmin && activeRequest?.status === 'pending' && (
+          <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-medium text-amber-800">
+              A staff member has requested access to the reporter&apos;s identity.
+            </p>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              rows={2}
+              placeholder="Optional notes..."
+            />
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleAdminDecision('approve')}
+                disabled={submitting}
+                loading={submitting}
+              >
+                Approve
+              </Button>
+              <Button
+                onClick={() => handleAdminDecision('deny')}
+                disabled={submitting}
+                loading={submitting}
+                variant="secondary"
+              >
+                Deny
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Staff action — request identity access */}
+        {!isAdmin && !activeRequest && (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              The reporter&apos;s identity is hidden. You can request access to their identity.
+              The student will review your request and make the final decision.
+            </p>
+            <div>
+              <label htmlFor="identity-reason" className="block text-sm font-medium text-slate-700">
+                Reason for requesting identity <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="identity-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                rows={3}
+                placeholder="Explain why you need access to the reporter's identity (minimum 10 characters)..."
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                Example: &quot;Identity is required to discuss additional information with the student during investigation.&quot;
+              </p>
+            </div>
+            <Button
+              onClick={handleRequest}
+              disabled={submitting || reason.trim().length < 10}
+              loading={submitting}
+            >
+              Request Identity Access
+            </Button>
+          </div>
+        )}
+
+        {!isAdmin && activeRequest && (
+          <p className="text-sm text-slate-500">
+            {activeRequest.status === 'pending'
+              ? 'Your request is awaiting the student\'s decision.'
+              : 'Your request has been approved by admin and is awaiting the student\'s decision.'}
+          </p>
+        )}
+
+        {isAdmin && !activeRequest && latestRequest && (
+          <p className="text-sm text-slate-500">
+            No active identity access requests. The last request was{' '}
+            {identityStatusLabel(latestRequest.status).label.toLowerCase()}.
+          </p>
+        )}
+
+        {isAdmin && !activeRequest && !latestRequest && (
+          <p className="text-sm text-slate-500">
+            No identity access requests have been made for this complaint.
+          </p>
+        )}
+      </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main Complaint Detail Component
 // ---------------------------------------------------------------------------
 
@@ -487,6 +747,7 @@ export function ComplaintDetail({
     studentAlias,
     slaDisplay,
     isAdmin,
+    identityRequests,
   } = detail;
   const priorityMeta =
     PRIORITY_PRESENTATION[complaint.priority as keyof typeof PRIORITY_PRESENTATION];
@@ -586,6 +847,16 @@ export function ComplaintDetail({
         )}
       </Card>
 
+      {/* Identity Access Requests */}
+      {!identityVisible && complaint.privacy_mode !== 'identified' && (
+        <IdentityAccessPanel
+          complaintId={complaint.id}
+          isAdmin={isAdmin}
+          requests={identityRequests ?? []}
+          onAction={refresh}
+        />
+      )}
+
       {/* Description */}
       <Card>
         <h2 className="text-lg font-bold text-slate-900">Description</h2>
@@ -667,7 +938,7 @@ export function ComplaintDetail({
 
       {/* Assignment Form — admin only, only when not yet assigned */}
       {isAdmin && !complaint.assigned_to && (
-        <AssignmentForm trackingId={complaint.tracking_id} onAction={refresh} />
+        <AssignmentForm trackingId={complaint.tracking_id} departmentId={complaint.department_id} onAction={refresh} />
       )}
 
       {/* Assignment History */}
@@ -850,6 +1121,7 @@ export function ComplaintDetail({
             <EscalatePanel
               trackingId={complaint.tracking_id}
               slaDisplay={slaDisplay}
+              assignedAt={assignments.length > 0 ? assignments[assignments.length - 1]?.created_at ?? null : null}
               onAction={refresh}
             />
           </div>

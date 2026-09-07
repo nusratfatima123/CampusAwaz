@@ -25,6 +25,19 @@ export function SlaIndicator({ sla }: { sla: SlaDisplay | null }) {
     );
   }
 
+  if (sla.state === 'overdue') {
+    return (
+      <div className="space-y-1">
+        <Badge tone="danger">
+          Overdue: {Math.round(Math.abs(sla.hoursRemaining))}h past deadline
+        </Badge>
+        <p className="text-xs text-slate-500">
+          Deadline: {sla.responseHours}h — {formatDeadline(sla.responseDeadline)}
+        </p>
+      </div>
+    );
+  }
+
   if (sla.state === 'approaching') {
     return (
       <div className="space-y-1">
@@ -56,6 +69,7 @@ export function SlaDot({ state }: { state: string | null }) {
   const colors: Record<string, string> = {
     on_track: 'bg-green-500',
     approaching: 'bg-amber-500',
+    overdue: 'bg-orange-600',
     breached: 'bg-red-500',
   };
 

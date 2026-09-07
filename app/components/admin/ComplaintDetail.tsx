@@ -679,14 +679,20 @@ export function ComplaintDetail({
                 tone={
                   slaDisplay.state === 'breached'
                     ? 'danger'
-                    : slaDisplay.state === 'approaching'
-                      ? 'warning'
-                      : 'success'
+                    : slaDisplay.state === 'overdue'
+                      ? 'danger'
+                      : slaDisplay.state === 'approaching'
+                        ? 'warning'
+                        : 'success'
                 }
               >
                 {slaDisplay.state === 'breached'
-                  ? 'Breached'
-                  : `${Math.round(slaDisplay.hoursRemaining)}h left`}
+                  ? 'SLA Breached'
+                  : slaDisplay.state === 'overdue'
+                    ? `Overdue: ${Math.round(Math.abs(slaDisplay.hoursRemaining))}h`
+                    : slaDisplay.state === 'approaching'
+                      ? `${Math.round(slaDisplay.hoursRemaining)}h left`
+                      : `${Math.round(slaDisplay.hoursRemaining)}h remaining`}
               </Badge>
               <p className="text-xs text-slate-500">
                 {slaDisplay.responseHours}h response —{' '}

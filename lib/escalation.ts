@@ -51,19 +51,26 @@ export async function getSlaRule(
 
 /**
  * Checks whether a complaint has exceeded its SLA window.
+ *
+ * When `assignedAt` is provided the SLA clock starts from that timestamp
+ * (i.e. when the complaint was last assigned). Otherwise it falls back to
+ * `submitted_at`.
  */
 export async function isSlaBreached(
   complaint: Pick<Complaint, 'id' | 'university_id' | 'category_id' | 'priority' | 'submitted_at' | 'updated_at'>,
   categoryKey: string | null,
+  assignedAt?: string | null,
 ): Promise<{ breached: boolean; slaRule: SlaRule | null; hoursOverdue: number }> {
   if (!complaint.university_id) return { breached: false, slaRule: null, hoursOverdue: 0 };
 
   const rule = await getSlaRule(complaint.university_id, categoryKey, complaint.priority);
   if (!rule) return { breached: false, slaRule: null, hoursOverdue: 0 };
 
-  const submittedAt = new Date(complaint.submitted_at).getTime();
+  const clockStart = assignedAt
+    ? new Date(assignedAt).getTime()
+    : new Date(complaint.submitted_at).getTime();
   const now = Date.now();
-  const hoursElapsed = (now - submittedAt) / (1000 * 60 * 60);
+  const hoursElapsed = (now - clockStart) / (1000 * 60 * 60);
   const hoursOverdue = Math.max(0, hoursElapsed - rule.response_hours);
 
   return {
@@ -306,6 +313,23 @@ export async function runSlaEscalationScan(
   const rows = (complaints ?? []) as unknown as (Complaint & { category_id: string | null })[];
   let escalated = 0;
 
+  // Batch-fetch latest assignment timestamps for all open complaints.
+  const complaintIds = rows.map((r) => r.id);
+  let latestAssignmentByComplaint = new Map<string, string>();
+  if (complaintIds.length > 0) {
+    const { data: assignmentRows } = await admin
+      .from('complaint_assignments')
+      .select('complaint_id, created_at')
+      .in('complaint_id', complaintIds)
+      .order('created_at', { ascending: false });
+
+    for (const row of (assignmentRows ?? []) as { complaint_id: string; created_at: string }[]) {
+      if (!latestAssignmentByComplaint.has(row.complaint_id)) {
+        latestAssignmentByComplaint.set(row.complaint_id, row.created_at);
+      }
+    }
+  }
+
   for (const complaint of rows) {
     let categoryKey: string | null = null;
     if (complaint.category_id) {
@@ -317,7 +341,8 @@ export async function runSlaEscalationScan(
       categoryKey = (cat as { key: string } | null)?.key ?? null;
     }
 
-    const { breached } = await isSlaBreached(complaint, categoryKey);
+    const assignedAt = latestAssignmentByComplaint.get(complaint.id) ?? null;
+    const { breached } = await isSlaBreached(complaint, categoryKey, assignedAt);
     if (!breached) continue;
 
     // Check if already escalated at max level.

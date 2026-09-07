@@ -427,6 +427,7 @@ export type IdentityAccessRequest = {
   complaint_id: string;
   requester_id: string;
   requested_by_role: string;
+  reason: string | null;
   status: IdentityAccessRequestStatus;
   admin_decided_by: string | null;
   admin_decided_at: string | null;
@@ -439,7 +440,7 @@ export type IdentityAccessRequest = {
   updated_at: string;
 };
 
-export type SlaState = 'on_track' | 'approaching' | 'breached';
+export type SlaState = 'on_track' | 'approaching' | 'overdue' | 'breached';
 
 export type SlaDisplay = {
   state: SlaState;

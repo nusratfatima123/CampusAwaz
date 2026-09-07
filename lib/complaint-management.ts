@@ -16,6 +16,7 @@ import type {
   Department,
   Escalation,
   Feedback,
+  IdentityAccessRequest,
   NotificationType,
   PrivacyMode,
   ProofOfAction,
@@ -282,7 +283,8 @@ export interface ComplaintDetailResult {
   studentName: string | null;
   studentAlias: string | null;
   canTakeAction: boolean;
-  slaDisplay: { state: 'on_track' | 'approaching' | 'breached'; hoursRemaining: number; responseDeadline: string; responseHours: number } | null;
+  slaDisplay: { state: 'on_track' | 'approaching' | 'overdue' | 'breached'; hoursRemaining: number; responseDeadline: string; responseHours: number } | null;
+  identityRequests: IdentityAccessRequest[];
 }
 
 /**
@@ -344,7 +346,7 @@ export async function getComplaintDetail(
 
   if (!canAccess) return null;
 
-  const [evidenceResult, historyResult, privacyResult, recommendationResult, assignmentsResult, escalationsResult, proofResult, resolutionEvidenceResult, feedbackResult] =
+  const [evidenceResult, historyResult, privacyResult, recommendationResult, assignmentsResult, escalationsResult, proofResult, resolutionEvidenceResult, feedbackResult, identityRequestsResult] =
     await Promise.all([
       admin
         .from('complaint_evidence')
@@ -395,6 +397,11 @@ export async function getComplaintDetail(
         .select('id, complaint_id, student_id, rating, comment, created_at')
         .eq('complaint_id', typed.id)
         .maybeSingle(),
+      admin
+        .from('identity_access_requests')
+        .select('id, complaint_id, requester_id, requested_by_role, reason, status, admin_decided_by, admin_decided_at, admin_notes, student_decided_at, student_notes, granted_at, expires_at, created_at, updated_at')
+        .eq('complaint_id', typed.id)
+        .order('created_at', { ascending: false }),
     ]);
 
   const privacy = (privacyResult.data as Pick<
@@ -455,18 +462,31 @@ export async function getComplaintDetail(
   }));
 
   // --- SLA display ---------------------------------------------------------
-  let slaDisplay: { state: 'on_track' | 'approaching' | 'breached'; hoursRemaining: number; responseDeadline: string; responseHours: number } | null = null;
+  let slaDisplay: { state: 'on_track' | 'approaching' | 'overdue' | 'breached'; hoursRemaining: number; responseDeadline: string; responseHours: number } | null = null;
   if (typed.university_id && typed.category_id) {
     const rule = await getSlaRule(typed.university_id, typed.complaint_categories?.key ?? null, typed.priority as ComplaintPriority);
     if (rule) {
-      const submittedAt = new Date(typed.submitted_at).getTime();
+      const latestAssignment = rawAssignments.length > 0
+        ? rawAssignments[rawAssignments.length - 1]
+        : null;
+      const clockStart = latestAssignment
+        ? new Date(latestAssignment.created_at).getTime()
+        : new Date(typed.submitted_at).getTime();
       const now = Date.now();
-      const hoursElapsed = (now - submittedAt) / (1000 * 60 * 60);
-      const hoursRemaining = Math.max(0, rule.response_hours - hoursElapsed);
-      const deadline = new Date(submittedAt + rule.response_hours * 60 * 60 * 1000).toISOString();
-      const state: 'on_track' | 'approaching' | 'breached' =
-        hoursRemaining <= 0 ? 'breached' : hoursRemaining <= rule.response_hours * 0.25 ? 'approaching' : 'on_track';
-      slaDisplay = { state, hoursRemaining: Math.round(hoursRemaining * 10) / 10, responseDeadline: deadline, responseHours: rule.response_hours };
+      const hoursElapsed = (now - clockStart) / (1000 * 60 * 60);
+      const rawRemaining = rule.response_hours - hoursElapsed;
+      const deadline = new Date(clockStart + rule.response_hours * 60 * 60 * 1000).toISOString();
+      let state: 'on_track' | 'approaching' | 'overdue' | 'breached';
+      if (rawRemaining > rule.response_hours * 0.25) {
+        state = 'on_track';
+      } else if (rawRemaining > 0) {
+        state = 'approaching';
+      } else if (rawRemaining > -rule.response_hours) {
+        state = 'overdue';
+      } else {
+        state = 'breached';
+      }
+      slaDisplay = { state, hoursRemaining: Math.round(rawRemaining * 10) / 10, responseDeadline: deadline, responseHours: rule.response_hours };
     }
   }
 
@@ -491,6 +511,7 @@ export async function getComplaintDetail(
     studentAlias,
     canTakeAction,
     slaDisplay,
+    identityRequests: (identityRequestsResult.data ?? []) as IdentityAccessRequest[],
   };
 }
 
@@ -554,6 +575,12 @@ export async function assignComplaint(
     throw new Error('The selected user is not a staff member.');
   }
 
+  if (complaint.is_sensitive && !roleNames.some((r) => SENSITIVE_HANDLER_ROLES.includes(r))) {
+    throw new Error(
+      'Safety cases can only be assigned to a Female Focal Person, Proctor, Counselor or Administrator.'
+    );
+  }
+
   const assigneeUni = (assigneeRoles as unknown as { university_id: string | null }[])[0]?.university_id;
   if (assigneeUni && assigneeUni !== complaint.university_id) {
     throw new Error('The selected user is not at your university.');
@@ -589,6 +616,32 @@ export async function assignComplaint(
       changed_by: input.actor.userId,
       notes: input.notes ?? 'Complaint assigned to a staff member.',
     });
+  }
+
+  // Grant sensitive access and update confidential exposure.
+  if (complaint.is_sensitive) {
+    const assigneeRole = roleNames.find((r) => SENSITIVE_HANDLER_ROLES.includes(r)) ?? roleNames[0] ?? 'admin';
+
+    await admin.from('sensitive_case_access').upsert(
+      { complaint_id: complaint.id, user_id: input.assigneeId, role: assigneeRole },
+      { onConflict: 'complaint_id,user_id' },
+    );
+
+    if (complaint.privacy_mode === 'confidential') {
+      const { data: privacy } = await admin
+        .from('complaint_privacy')
+        .select('exposed_to')
+        .eq('complaint_id', complaint.id)
+        .maybeSingle();
+
+      const exposed = new Set(privacy?.exposed_to ?? []);
+      exposed.add(input.assigneeId);
+
+      await admin
+        .from('complaint_privacy')
+        .update({ exposed_to: Array.from(exposed) })
+        .eq('complaint_id', complaint.id);
+    }
   }
 
   // Notify the assignee.
@@ -758,7 +811,7 @@ export interface DashboardSummary {
 
 /**
  * Counts for the admin dashboard summary cards.
- * "Overdue" = complaints not updated in 7+ days that are not resolved.
+ * "Overdue" = complaints whose SLA deadline has passed (based on assignment time).
  */
 export async function getDashboardSummary(
   universityId: string,
@@ -767,12 +820,9 @@ export async function getDashboardSummary(
 ): Promise<DashboardSummary> {
   const admin = createAdminClient();
 
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
   const { data: complaints } = await admin
     .from('complaints')
-    .select('id, status, priority, is_sensitive, updated_at, assigned_to')
+    .select('id, status, priority, is_sensitive, submitted_at, updated_at, assigned_to, category_id')
     .eq('university_id', universityId);
 
   if (!complaints) return { total: 0, open: 0, assigned: 0, inReview: 0, escalated: 0, resolved: 0, highPriority: 0, sensitive: 0, overdue: 0 };
@@ -813,9 +863,65 @@ export async function getDashboardSummary(
     (c) => c.priority === 'high' || c.priority === 'critical',
   ).length;
   const sensitive = scoped.filter((c) => c.is_sensitive).length;
-  const overdue = scoped.filter(
-    (c) => c.status !== 'resolved' && new Date(c.updated_at) < sevenDaysAgo,
-  ).length;
+
+  // --- SLA-based overdue count ---
+  const openComplaints = scoped.filter((c) => c.status !== 'resolved' && c.status !== 'submitted');
+  let overdue = 0;
+
+  if (openComplaints.length > 0) {
+    const openIds = openComplaints.map((c) => c.id);
+    const categoryIds = [...new Set(openComplaints.map((c) => c.category_id).filter(Boolean))] as string[];
+
+    // Batch-fetch category keys, assignments, and SLA rules.
+    const [catRes, assignRes, slaRes] = await Promise.all([
+      categoryIds.length > 0
+        ? admin.from('complaint_categories').select('id, key').in('id', categoryIds)
+        : { data: [] },
+      admin.from('complaint_assignments').select('complaint_id, created_at').in('complaint_id', openIds).order('created_at', { ascending: false }),
+      admin.from('sla_rules').select('category_key, priority, response_hours').eq('university_id', universityId).eq('is_active', true),
+    ]);
+
+    const catKeyById = new Map<string, string>(
+      ((catRes.data ?? []) as { id: string; key: string }[]).map((r) => [r.id, r.key]),
+    );
+
+    const latestAssignment = new Map<string, string>();
+    for (const row of ((assignRes.data ?? []) as { complaint_id: string; created_at: string }[])) {
+      if (!latestAssignment.has(row.complaint_id)) {
+        latestAssignment.set(row.complaint_id, row.created_at);
+      }
+    }
+
+    // Build SLA lookup: "categoryKey|priority" → response_hours
+    const slaRules = (slaRes.data ?? []) as { category_key: string; priority: string; response_hours: number }[];
+    const slaByKey = new Map<string, number>();
+    const slaByPriority = new Map<string, number>();
+    for (const r of slaRules) {
+      slaByKey.set(`${r.category_key}|${r.priority}`, r.response_hours);
+      if (!slaByPriority.has(r.priority)) {
+        slaByPriority.set(r.priority, r.response_hours);
+      }
+    }
+
+    const now = Date.now();
+    for (const c of openComplaints) {
+      const catKey = c.category_id ? catKeyById.get(c.category_id) ?? null : null;
+      const responseHours =
+        (catKey ? slaByKey.get(`${catKey}|${c.priority}`) : undefined) ??
+        slaByPriority.get(c.priority) ??
+        null;
+      if (!responseHours) continue;
+
+      const assignedAt = latestAssignment.get(c.id);
+      const clockStart = assignedAt
+        ? new Date(assignedAt).getTime()
+        : new Date(c.submitted_at).getTime();
+      const hoursElapsed = (now - clockStart) / (1000 * 60 * 60);
+      if (hoursElapsed > responseHours) {
+        overdue++;
+      }
+    }
+  }
 
   return { total, open, assigned, inReview, escalated, resolved, highPriority, sensitive, overdue };
 }
