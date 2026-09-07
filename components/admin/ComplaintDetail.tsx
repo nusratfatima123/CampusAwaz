@@ -56,14 +56,14 @@ function filterStaffByCategory(
   categoryKey: string,
 ): AssignableStaff[] {
   const relevantRoles = CATEGORY_RELEVANT_ROLES[categoryKey];
-  if (!relevantRoles) return staff;
+  if (!relevantRoles) return staff.filter((s) => s.role !== 'admin');
   const filtered = staff.filter((s) => relevantRoles.includes(s.role));
   // Fallback to hod if no staff match the category-specific roles
   if (filtered.length === 0) {
     const hodStaff = staff.filter((s) => s.role === 'hod');
-    // If hod also has no staff, fall back to ALL staff to ensure there's always at least one authority
+    // If hod also has no staff, fall back to all non-admin staff
     if (hodStaff.length === 0) {
-      return staff;
+      return staff.filter((s) => s.role !== 'admin');
     }
     return hodStaff;
   }

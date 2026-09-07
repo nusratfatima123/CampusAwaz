@@ -32,7 +32,7 @@ export default async function AdminDashboardPage() {
       <div className="container-page py-10 md:py-14">
         <Card>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Admin Dashboard
+            {roles.includes('admin') ? 'Admin Dashboard' : 'Authority Dashboard'}
           </h1>
           <Alert tone="warning" title="No university linked" className="mt-6">
             Your staff account is not linked to a university yet.
@@ -61,7 +61,7 @@ export default async function AdminDashboardPage() {
       <div className="mb-8">
         <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
           <LayoutDashboard className="h-6 w-6 text-blue-900" aria-hidden="true" />
-          Admin Dashboard
+          {roles.includes('admin') ? 'Admin Dashboard' : 'Authority Dashboard'}
         </h1>
         <p className="mt-2 text-base text-slate-600">
           {profile.universities?.name ?? 'Your university'} — Overview of all complaints
